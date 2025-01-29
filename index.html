@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo Educativo</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .totem-icon {
+            font-size: 1.5rem;
+            margin-left: 5px;
+        }
+        .question {
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .result {
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Top bar -->
+        <div class="row bg-primary text-white py-2">
+            <div class="col-3 text-left">
+                <div id="jogador1">
+                    <span id="jogador1-name">Jogador 1</span>
+                    <span id="score-jogador1">12</span>
+                </div>
+                <span id="totens-jogador1">
+                    <i class="totem-icon">🟢</i>
+                    <i class="totem-icon">🟢</i>
+                    <i class="totem-icon">🟢</i>
+                    <i class="totem-icon">🟢</i>
+                </span>
+            </div>
+            <div class="col-6 text-center">
+                <span class="font-weight-bold">Tema: Reconhecendo o Corpo</span>
+            </div>
+            <div class="col-3 text-right">
+                <div id="jogador2">
+                    <span id="jogador2-name">Jogador 2</span>
+                    <span id="score-jogador2">12</span>
+                </div>
+                <span id="totens-jogador2">
+                    <i class="totem-icon">🟢</i>
+                    <i class="totem-icon">🟢</i>
+                    <i class="totem-icon">🟢</i>
+                    <i class="totem-icon">🟢</i>
+                </span>
+            </div>
+        </div>
+
+        <!-- Question Area -->
+        <div class="question" id="question">Qual parte do corpo é usada para enxergar?</div>
+
+        <!-- Options -->
+        <div id="options" class="mb-3">
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="option" id="option1" value="1">
+                <label class="form-check-label" for="option1">Mão</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="option" id="option2" value="2">
+                <label class="form-check-label" for="option2">Olhos</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="option" id="option3" value="3">
+                <label class="form-check-label" for="option3">Pé</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="option" id="option4" value="4">
+                <label class="form-check-label" for="option4">Nariz</label>
+            </div>
+        </div>
+
+        <!-- Result and Prize -->
+        <div class="result text-center" id="result">Selecione uma resposta</div>
+        <div class="result text-center" id="prize">Prêmio: Nenhum</div>
+
+        <!-- Buttons -->
+        <div class="text-center">
+            <button class="btn btn-success" id="check-btn">Verificar</button>
+            <button class="btn btn-primary" id="next-btn" disabled>Próxima</button>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="gameOverModal" tabindex="-1" role="dialog" aria-labelledby="gameOverModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="gameOverModalLabel">Fim de Jogo</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="game-over-message">
+                    Jogador 1 venceu!
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="restartGame()">Reiniciar</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
