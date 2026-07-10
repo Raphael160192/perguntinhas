@@ -1,0 +1,31 @@
+namespace Game.Application.Dtos;
+
+public class AnswerResultDto
+{
+    public bool IsCorrect { get; set; }
+    public PlayerDto CurrentPlayer { get; set; } = null!;
+    public PlayerDto PunishedPlayer { get; set; } = null!;
+    public string? LostClothing { get; set; }
+    public string? Reward { get; set; }
+    public bool IsGameOver { get; set; }
+    public PlayerDto? Winner { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public GameStateDto State { get; set; } = null!;
+}
+
+public class CreateGameRequestDto
+{
+    public string Player1Name { get; set; } = "Jogador 1";
+    public string Player2Name { get; set; } = "Jogador 2";
+}
+
+public class CreateGameResultDto
+{
+    public Guid GameId { get; set; }
+    public GameStateDto State { get; set; } = null!;
+}
+
+public class AnswerRequestDto
+{
+    public int SelectedOptionIndex { get; set; }
+}

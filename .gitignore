@@ -1,0 +1,63 @@
+# ================================
+# .NET / ASP.NET Core
+# ================================
+bin/
+obj/
+*.user
+*.suo
+*.vs/
+.vs/
+*.log
+*.nupkg
+*.snupkg
+TestResults/
+publish/
+launchSettings.json
+
+# ================================
+# Entity Framework
+# ================================
+*.db
+*.db-shm
+*.db-wal
+
+# ================================
+# Configurações locais sensíveis
+# ================================
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.local.json
+secrets.json
+
+# ================================
+# Frontend (Node / Vite / React)
+# ================================
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
+
+# ================================
+# Variáveis de ambiente
+# ================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ================================
+# Docker volumes locais
+# ================================
+postgres_data/
+
+# ================================
+# IDEs e editores
+# ================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
