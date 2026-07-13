@@ -66,6 +66,30 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Exceções não tratadas viram 500 JSON com headers de CORS — assim o navegador
+// mostra o erro real em vez de mascarar como "CORS blocked". O UseExceptionHandler
+// limpa a resposta (incluindo headers já adicionados pelo UseCors), então o header
+// de origem é reaplicado manualmente aqui.
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var feature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(feature?.Error, "Erro não tratado em {Path}.", context.Request.Path);
+
+        var origin = context.Request.Headers.Origin.ToString();
+        if (!string.IsNullOrEmpty(origin) && IsAllowedFrontendOrigin(origin, allowedOriginSet))
+        {
+            context.Response.Headers.AccessControlAllowOrigin = origin;
+            context.Response.Headers.AccessControlAllowCredentials = "true";
+        }
+
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        await context.Response.WriteAsJsonAsync(new { message = "Erro interno no servidor. Tente novamente." });
+    });
+});
+
 app.UseCors("AllowFrontend");
 
 if (!app.Environment.IsDevelopment())
@@ -128,7 +152,6 @@ static string ToNpgsqlConnectionString(string? connectionString)
         Database = Uri.UnescapeDataString(uri.AbsolutePath.TrimStart('/')),
         Username = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : string.Empty,
         Password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : string.Empty,
-        SslMode = SslMode.Require,
-        TrustServerCertificate = true
+        SslMode = SslMode.Require
     }.ConnectionString;
 }
