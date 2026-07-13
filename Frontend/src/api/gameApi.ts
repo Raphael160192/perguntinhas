@@ -43,8 +43,12 @@ export function createRemoteGame(player1Name: string): Promise<CreateRemoteGameR
   return request<CreateRemoteGameResult>("/remote", "POST", { player1Name });
 }
 
-export function joinGame(joinCode: string, playerName: string): Promise<JoinGameResult> {
-  return request<JoinGameResult>("/join", "POST", { joinCode, playerName });
+export function joinGame(
+  joinCode: string,
+  playerName: string,
+  playerId?: string
+): Promise<JoinGameResult> {
+  return request<JoinGameResult>("/join", "POST", { joinCode, playerName, playerId });
 }
 
 export function getGame(gameId: string): Promise<GameState> {

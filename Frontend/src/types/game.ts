@@ -49,6 +49,7 @@ export interface CreateRemoteGameResult {
 export interface JoinGameResult {
   gameId: string;
   playerId: string;
+  rejoined: boolean;
   state: GameState;
 }
 

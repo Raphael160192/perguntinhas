@@ -9,6 +9,7 @@ import {
   restartGame
 } from "./api/gameApi";
 import { connectToGame, disconnectFromGame } from "./api/gameHub";
+import { clearSession, loadSession, saveSession, type SavedSession } from "./api/session";
 import { HomeScreen } from "./components/HomeScreen";
 import { PlayerSetup } from "./components/PlayerSetup";
 import { RemoteCreate } from "./components/RemoteCreate";
@@ -21,6 +22,7 @@ import type { AnswerResult, GameState } from "./types/game";
 
 // Fases da interface. Toda regra do jogo vem da API — aqui só controlamos qual tela mostrar.
 type Phase =
+  | "resuming"
   | "home"
   | "setup"
   | "remote-create"
@@ -31,7 +33,9 @@ type Phase =
   | "gameover";
 
 export default function App() {
-  const [phase, setPhase] = useState<Phase>("home");
+  // Com sessão salva, o app abre em "retomando…" (refresh volta direto ao jogo,
+  // sem piscar a home com o banner de retomada).
+  const [phase, setPhase] = useState<Phase>(() => (loadSession() ? "resuming" : "home"));
   const [gameId, setGameId] = useState<string | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [answerResult, setAnswerResult] = useState<AnswerResult | null>(null);
@@ -55,6 +59,50 @@ export default function App() {
       void disconnectFromGame();
     };
   }, []);
+
+  // Retomada automática: refresh acidental volta direto para a partida salva.
+  useEffect(() => {
+    const saved = loadSession();
+    if (saved) {
+      void resumeSession(saved);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Recupera a partida salva no aparelho e deriva a tela do estado do servidor.
+  // Takeovers de resultado/prêmio são transitórios: a retomada cai na pergunta atual.
+  async function resumeSession(saved: SavedSession) {
+    setLoading(true);
+    setError(null);
+    try {
+      const state = await getGame(saved.gameId);
+
+      setGameId(saved.gameId);
+      setGameState(state);
+      setMyPlayerId(saved.playerId);
+      setJoinCode(state.joinCode ?? saved.joinCode);
+      setAnswerResult(null);
+      setSelectedOptionIndex(null);
+
+      if (saved.playerId) {
+        await connectToGame(saved.gameId, hubHandlers);
+      }
+
+      if (state.status === "WaitingForOpponent") {
+        setPhase("remote-create");
+      } else if (state.status === "Finished") {
+        setPhase("gameover");
+      } else {
+        setPhase("question");
+      }
+    } catch {
+      // Sala não existe mais (expirada/apagada): descarta a sessão salva.
+      clearSession();
+      setPhase("home");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   // ===== Eventos vindos do outro aparelho (SignalR) =====
 
@@ -118,6 +166,7 @@ export default function App() {
       setGameState(created.state);
       setMyPlayerId(null);
       setRound(1);
+      saveSession({ gameId: created.gameId, playerId: null, joinCode: null, playerName: null });
       setPhase("question");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível criar a partida.");
@@ -135,6 +184,12 @@ export default function App() {
       setGameState(created.state);
       setMyPlayerId(created.playerId);
       setJoinCode(created.joinCode);
+      saveSession({
+        gameId: created.gameId,
+        playerId: created.playerId,
+        joinCode: created.joinCode,
+        playerName
+      });
       await connectToGame(created.gameId, hubHandlers);
       // permanece na fase remote-create exibindo o código até o PlayerJoined chegar
     } catch (e) {
@@ -148,13 +203,22 @@ export default function App() {
     setError(null);
     setLoading(true);
     try {
-      const joined = await joinGame(code, playerName);
+      // Envia a identidade salva: se este aparelho já é jogador desta sala,
+      // o backend devolve a sessão em andamento (rejoin) em vez de "sala cheia".
+      const savedPlayerId = loadSession()?.playerId ?? undefined;
+      const joined = await joinGame(code, playerName, savedPlayerId);
       setGameId(joined.gameId);
       setGameState(joined.state);
       setMyPlayerId(joined.playerId);
+      saveSession({
+        gameId: joined.gameId,
+        playerId: joined.playerId,
+        joinCode: code,
+        playerName
+      });
       await connectToGame(joined.gameId, hubHandlers);
       setRound(1);
-      setPhase("question");
+      setPhase(joined.state.status === "Finished" ? "gameover" : "question");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível entrar na sala.");
     } finally {
@@ -242,6 +306,23 @@ export default function App() {
     setPhase("home");
   }
 
+  // Abandono explícito: descarta a sessão salva e zera o estado local.
+  function abandonSession() {
+    clearSession();
+    void disconnectFromGame();
+    setGameId(null);
+    setGameState(null);
+    setAnswerResult(null);
+    setSelectedOptionIndex(null);
+    setMyPlayerId(null);
+    setJoinCode(null);
+    setError(null);
+    setPhase("home");
+  }
+
+  // Sessão salva ainda válida para oferecer "voltar à partida" na home.
+  const savedForResume = phase === "home" ? loadSession() : null;
+
   // No modo remoto, este aparelho só interage quando é a vez do seu jogador.
   const isMyTurn =
     !isRemote ||
@@ -252,6 +333,12 @@ export default function App() {
 
   return (
     <div className="app">
+      {phase === "resuming" && (
+        <div className="screen screen--question">
+          <div className="loading-screen">retomando a partida…</div>
+        </div>
+      )}
+
       {phase === "home" && (
         <HomeScreen
           onLocal={() => {
@@ -266,6 +353,14 @@ export default function App() {
             setError(null);
             setPhase("remote-join");
           }}
+          resumeAvailable={savedForResume !== null}
+          resumeJoinCode={savedForResume?.joinCode ?? null}
+          onResume={() => {
+            const saved = loadSession();
+            if (saved) void resumeSession(saved);
+          }}
+          onAbandon={abandonSession}
+          loading={loading}
         />
       )}
 
@@ -329,7 +424,12 @@ export default function App() {
       )}
 
       {phase === "gameover" && gameState && (
-        <GameOverScreen state={gameState} onRestart={handleRestart} loading={loading} />
+        <GameOverScreen
+          state={gameState}
+          onRestart={handleRestart}
+          onExit={abandonSession}
+          loading={loading}
+        />
       )}
     </div>
   );

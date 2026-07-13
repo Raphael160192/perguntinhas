@@ -5,10 +5,11 @@ import { PLAYER_COLORS } from "./Scoreboard";
 export interface GameOverScreenProps {
   state: GameState;
   onRestart: () => void;
+  onExit: () => void;
   loading: boolean;
 }
 
-export function GameOverScreen({ state, onRestart, loading }: GameOverScreenProps) {
+export function GameOverScreen({ state, onRestart, onExit, loading }: GameOverScreenProps) {
   const winner = state.players.find((p) => p.id === state.winnerPlayerId);
   const winnerName = winner?.name ?? state.winnerName ?? "";
   const initial = winnerName.charAt(0).toUpperCase();
@@ -49,8 +50,11 @@ export function GameOverScreen({ state, onRestart, loading }: GameOverScreenProp
       </div>
 
       <div className="screen-footer">
-        <button className="btn btn--ghost" onClick={onRestart} disabled={loading}>
+        <button className="btn btn--premium" onClick={onRestart} disabled={loading}>
           Jogar de novo
+        </button>
+        <button className="btn btn--ghost" onClick={onExit} disabled={loading}>
+          Encerrar e sair
         </button>
       </div>
     </div>
