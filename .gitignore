@@ -41,6 +41,7 @@ Frontend/dist/
 Frontend/.env
 Frontend/.env.local
 Frontend/.env.*.local
+.pnpm-store/
 
 # ================================
 # Variáveis de ambiente

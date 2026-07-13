@@ -65,10 +65,15 @@ public class GamesController : ControllerBase
             var result = await _gameService.JoinGameAsync(new JoinGameRequestDto
             {
                 JoinCode = request.JoinCode,
-                PlayerName = request.PlayerName
+                PlayerName = request.PlayerName,
+                PlayerId = request.PlayerId
             });
 
-            await BroadcastAsync(result.GameId, "PlayerJoined", result.State);
+            // Reentrada não altera o estado da partida; só o join novo notifica o criador.
+            if (!result.Rejoined)
+            {
+                await BroadcastAsync(result.GameId, "PlayerJoined", result.State);
+            }
 
             return Ok(result);
         }
@@ -97,20 +102,23 @@ public class GamesController : ControllerBase
     {
         try
         {
-            var result = await _gameService.SubmitAnswerAsync(gameId, new AnswerRequestDto
+            var serviceResult = await _gameService.SubmitAnswerAsync(gameId, new AnswerRequestDto
             {
                 SelectedOptionIndex = request.SelectedOptionIndex,
                 PlayerId = request.PlayerId
             });
 
-            if (result is null)
+            if (serviceResult is null)
             {
                 return NotFound();
             }
 
-            await BroadcastAsync(gameId, "AnswerSubmitted", result);
+            if (serviceResult.StateChanged)
+            {
+                await BroadcastAsync(gameId, "AnswerSubmitted", serviceResult.Result);
+            }
 
-            return Ok(result);
+            return Ok(serviceResult.Result);
         }
         catch (GameRuleException ex)
         {

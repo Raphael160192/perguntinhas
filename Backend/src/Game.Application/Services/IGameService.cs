@@ -9,7 +9,7 @@ public interface IGameService
     Task<JoinGameResultDto> JoinGameAsync(JoinGameRequestDto request);
     Task<GameStateDto?> GetStateAsync(Guid gameId);
     Task<QuestionDto?> GetCurrentQuestionAsync(Guid gameId);
-    Task<AnswerResultDto?> SubmitAnswerAsync(Guid gameId, AnswerRequestDto request);
+    Task<SubmitAnswerServiceResult?> SubmitAnswerAsync(Guid gameId, AnswerRequestDto request);
     Task<GameStateDto?> NextRoundAsync(Guid gameId, Guid? playerId = null);
     Task<GameStateDto?> RestartAsync(Guid gameId);
 }

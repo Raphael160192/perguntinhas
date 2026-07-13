@@ -5,12 +5,17 @@ public class GameSessionEntity
     public Guid Id { get; set; }
     public int CurrentPlayerIndex { get; set; }
     public int CurrentQuestionIndex { get; set; }
+    public int RoundNumber { get; set; } = 1;
+    public int? AnsweredRoundNumber { get; set; }
     public string Status { get; set; } = string.Empty;
     public string Mode { get; set; } = "Local";
     public string? JoinCode { get; set; }
 
     // Lista de IDs de perguntas na ordem sorteada da partida (ex: "[12,3,45]").
     public string QuestionOrderJson { get; set; } = "[]";
+    public string RewardProgressionJson { get; set; } = "{\"currentLevel\":1,\"rewardsGeneratedInCurrentStage\":0,\"recentRewards\":[]}";
+    public string? PendingRoundResultJson { get; set; }
+    public long Version { get; set; }
 
     public Guid? WinnerPlayerId { get; set; }
     public DateTime CreatedAt { get; set; }

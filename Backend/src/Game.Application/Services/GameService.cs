@@ -1,5 +1,6 @@
 using Game.Application.Dtos;
 using Game.Application.Repositories;
+using Game.Application.Rewards;
 using Game.Domain.Entities;
 using Game.Domain.Enums;
 using Game.Domain.Rules;
@@ -10,18 +11,18 @@ public class GameService : IGameService
 {
     private readonly IGameSessionRepository _sessionRepository;
     private readonly IQuestionRepository _questionRepository;
-    private readonly IRewardProvider _rewardProvider;
+    private readonly IRewardSelector _rewardSelector;
     private readonly IGameActivityLog _activityLog;
 
     public GameService(
         IGameSessionRepository sessionRepository,
         IQuestionRepository questionRepository,
-        IRewardProvider rewardProvider,
+        IRewardSelector rewardSelector,
         IGameActivityLog activityLog)
     {
         _sessionRepository = sessionRepository;
         _questionRepository = questionRepository;
-        _rewardProvider = rewardProvider;
+        _rewardSelector = rewardSelector;
         _activityLog = activityLog;
     }
 
@@ -84,6 +85,23 @@ public class GameService : IGameService
             throw new GameRuleException("Sala não encontrada. Confira o código.");
         }
 
+        // Rejoin idempotente: quem já é jogador desta sala volta para ela em vez
+        // de receber "sala cheia" (refresh, retorno acidental à home etc.).
+        if (request.PlayerId.HasValue)
+        {
+            var existingPlayer = session.Players.FirstOrDefault(p => p.Id == request.PlayerId.Value);
+            if (existingPlayer is not null)
+            {
+                return new JoinGameResultDto
+                {
+                    GameId = session.Id,
+                    PlayerId = existingPlayer.Id,
+                    Rejoined = true,
+                    State = await ToStateDtoAsync(session)
+                };
+            }
+        }
+
         if (session.Status != GameStatus.WaitingForOpponent || session.Players.Count >= 2)
         {
             throw new GameRuleException("Esta sala já está cheia.");
@@ -124,7 +142,7 @@ public class GameService : IGameService
         return ToQuestionDto(await GetCurrentQuestionEntityAsync(session));
     }
 
-    public async Task<AnswerResultDto?> SubmitAnswerAsync(Guid gameId, AnswerRequestDto request)
+    public async Task<SubmitAnswerServiceResult?> SubmitAnswerAsync(Guid gameId, AnswerRequestDto request)
     {
         var session = await _sessionRepository.GetAsync(gameId);
         if (session is null)
@@ -133,6 +151,20 @@ public class GameService : IGameService
         }
 
         EnsureIsCurrentPlayer(session, request.PlayerId);
+
+        if (session.AnsweredRoundNumber == session.RoundNumber)
+        {
+            if (session.PendingRoundResult is null)
+            {
+                throw new GameRuleException("Esta rodada já foi respondida, mas o resultado não está disponível.");
+            }
+
+            return new SubmitAnswerServiceResult
+            {
+                Result = await ToAnswerResultDtoAsync(session, session.PendingRoundResult),
+                StateChanged = false
+            };
+        }
 
         if (session.Status != GameStatus.InProgress)
         {
@@ -144,7 +176,32 @@ public class GameService : IGameService
 
         var outcome = GameRules.ApplyAnswer(session, isCorrect);
 
-        Reward? reward = isCorrect ? _rewardProvider.GenerateRandomReward() : null;
+        Reward? reward = null;
+        if (isCorrect)
+        {
+            reward = _rewardSelector.Select(new RewardSelectionContext
+            {
+                Session = session,
+                Actor = outcome.PunishedPlayer,
+                Receiver = outcome.CurrentPlayer
+            }).Reward;
+        }
+
+        session.AnsweredRoundNumber = session.RoundNumber;
+        session.PendingRoundResult = new PendingRoundResult
+        {
+            RoundNumber = session.RoundNumber,
+            QuestionId = question.Id,
+            SelectedOptionIndex = request.SelectedOptionIndex,
+            CorrectAnswerIndex = question.CorrectAnswerIndex,
+            IsCorrect = isCorrect,
+            CurrentPlayerId = outcome.CurrentPlayer.Id,
+            PunishedPlayerId = outcome.PunishedPlayer.Id,
+            LostClothing = outcome.LostClothing,
+            Reward = reward,
+            IsGameOver = outcome.IsGameOver,
+            WinnerPlayerId = outcome.Winner?.Id
+        };
 
         await _sessionRepository.UpdateAsync(session);
 
@@ -157,18 +214,10 @@ public class GameService : IGameService
             await _activityLog.RecordRewardAsync(session.Id, outcome.CurrentPlayer.Id, reward);
         }
 
-        return new AnswerResultDto
+        return new SubmitAnswerServiceResult
         {
-            IsCorrect = outcome.IsCorrect,
-            CorrectAnswerIndex = question.CorrectAnswerIndex,
-            CurrentPlayer = ToPlayerDto(outcome.CurrentPlayer),
-            PunishedPlayer = ToPlayerDto(outcome.PunishedPlayer),
-            LostClothing = outcome.LostClothing?.ToString(),
-            Reward = reward?.Text,
-            IsGameOver = outcome.IsGameOver,
-            Winner = outcome.Winner is null ? null : ToPlayerDto(outcome.Winner),
-            Message = isCorrect ? "Correto!" : "Errado!",
-            State = await ToStateDtoAsync(session)
+            Result = await ToAnswerResultDtoAsync(session, session.PendingRoundResult),
+            StateChanged = true
         };
     }
 
@@ -184,8 +233,15 @@ public class GameService : IGameService
 
         if (session.Status == GameStatus.InProgress)
         {
+            if (session.AnsweredRoundNumber != session.RoundNumber)
+            {
+                throw new GameRuleException("Responda a pergunta antes de avançar a rodada.");
+            }
+
             session.CurrentPlayerIndex = 1 - session.CurrentPlayerIndex;
             session.CurrentQuestionIndex = (session.CurrentQuestionIndex + 1) % session.QuestionOrder.Count;
+            session.RoundNumber++;
+            session.PendingRoundResult = null;
         }
 
         await _sessionRepository.UpdateAsync(session);
@@ -201,6 +257,11 @@ public class GameService : IGameService
             return null;
         }
 
+        if (session.Players.Count != 2)
+        {
+            throw new GameRuleException("A partida precisa de dois jogadores para ser reiniciada.");
+        }
+
         foreach (var player in session.Players)
         {
             player.Score = 12;
@@ -211,6 +272,10 @@ public class GameService : IGameService
         session.QuestionOrder = await ShuffleQuestionOrderAsync();
         session.CurrentPlayerIndex = 0;
         session.CurrentQuestionIndex = 0;
+        session.RoundNumber = 1;
+        session.AnsweredRoundNumber = null;
+        session.PendingRoundResult = null;
+        session.RewardProgression = new RewardProgressionState();
         session.Status = GameStatus.InProgress;
         session.WinnerPlayerId = null;
         session.FinishedAt = null;
@@ -317,6 +382,75 @@ public class GameService : IGameService
         RemainingClothesCount = player.Clothes.RemainingCount()
     };
 
+    private static RewardDto? ToRewardDto(Reward? reward)
+    {
+        if (reward?.TemplateId is null || reward.CatalogVersion is null)
+        {
+            return null;
+        }
+
+        return new RewardDto
+        {
+            TemplateId = reward.TemplateId,
+            CatalogVersion = reward.CatalogVersion,
+            Text = reward.Text,
+            Level = reward.IntensityLevel,
+            LevelName = RewardRules.LevelName(reward.IntensityLevel),
+            ActorPlayerId = reward.ActorPlayerId,
+            ReceiverPlayerId = reward.ReceiverPlayerId,
+            ExecutionType = reward.ExecutionType.ToString(),
+            ExecutionValue = reward.ExecutionValue
+        };
+    }
+
+    private static PendingRoundResultDto? ToPendingRoundResultDto(PendingRoundResult? pending)
+    {
+        if (pending is null)
+        {
+            return null;
+        }
+
+        return new PendingRoundResultDto
+        {
+            RoundNumber = pending.RoundNumber,
+            CorrectAnswerIndex = pending.CorrectAnswerIndex,
+            IsCorrect = pending.IsCorrect,
+            CurrentPlayerId = pending.CurrentPlayerId,
+            PunishedPlayerId = pending.PunishedPlayerId,
+            LostClothing = pending.LostClothing?.ToString(),
+            Reward = pending.Reward?.Text,
+            RewardDetails = ToRewardDto(pending.Reward),
+            IsGameOver = pending.IsGameOver,
+            WinnerPlayerId = pending.WinnerPlayerId
+        };
+    }
+
+    private async Task<AnswerResultDto> ToAnswerResultDtoAsync(
+        GameSession session,
+        PendingRoundResult pending)
+    {
+        var currentPlayer = session.Players.Single(player => player.Id == pending.CurrentPlayerId);
+        var punishedPlayer = session.Players.Single(player => player.Id == pending.PunishedPlayerId);
+        var winner = pending.WinnerPlayerId.HasValue
+            ? session.Players.SingleOrDefault(player => player.Id == pending.WinnerPlayerId.Value)
+            : null;
+
+        return new AnswerResultDto
+        {
+            IsCorrect = pending.IsCorrect,
+            CorrectAnswerIndex = pending.CorrectAnswerIndex,
+            CurrentPlayer = ToPlayerDto(currentPlayer),
+            PunishedPlayer = ToPlayerDto(punishedPlayer),
+            LostClothing = pending.LostClothing?.ToString(),
+            Reward = pending.Reward?.Text,
+            RewardDetails = ToRewardDto(pending.Reward),
+            IsGameOver = pending.IsGameOver,
+            Winner = winner is null ? null : ToPlayerDto(winner),
+            Message = pending.IsCorrect ? "Correto!" : "Errado!",
+            State = await ToStateDtoAsync(session)
+        };
+    }
+
     private async Task<GameStateDto> ToStateDtoAsync(GameSession session)
     {
         var winner = session.WinnerPlayerId.HasValue
@@ -330,10 +464,12 @@ public class GameService : IGameService
             Mode = session.Mode.ToString(),
             JoinCode = session.JoinCode,
             CurrentPlayerIndex = session.CurrentPlayerIndex,
+            RoundNumber = session.RoundNumber,
             Players = session.Players.Select(ToPlayerDto).ToList(),
             CurrentQuestion = session.Status == GameStatus.InProgress
                 ? ToQuestionDto(await GetCurrentQuestionEntityAsync(session))
                 : null,
+            PendingRoundResult = ToPendingRoundResultDto(session.PendingRoundResult),
             WinnerPlayerId = session.WinnerPlayerId,
             WinnerName = winner?.Name,
             CreatedAt = session.CreatedAt,

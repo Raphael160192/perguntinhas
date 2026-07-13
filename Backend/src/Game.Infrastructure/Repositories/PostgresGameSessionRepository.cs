@@ -29,7 +29,8 @@ public class PostgresGameSessionRepository : IGameSessionRepository
         {
             Id = session.Id,
             CreatedAt = session.CreatedAt,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            Version = session.Version
         };
 
         CopyToEntity(session, entity);
@@ -67,6 +68,8 @@ public class PostgresGameSessionRepository : IGameSessionRepository
 
         CopyToEntity(session, entity);
         entity.UpdatedAt = DateTime.UtcNow;
+        _dbContext.Entry(entity).Property(e => e.Version).OriginalValue = session.Version;
+        entity.Version = session.Version + 1;
 
         // Jogador novo (join na sala remota) ainda não existe na entidade.
         foreach (var player in session.Players)
@@ -101,6 +104,11 @@ public class PostgresGameSessionRepository : IGameSessionRepository
         try
         {
             await _dbContext.SaveChangesAsync();
+            session.Version = entity.Version;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new GameRuleException("A partida foi atualizada em outro aparelho. Sincronize e tente novamente.");
         }
         catch (DbUpdateException ex) when (IsUniqueViolation(ex))
         {
@@ -131,7 +139,15 @@ public class PostgresGameSessionRepository : IGameSessionRepository
             Id = entity.Id,
             CurrentPlayerIndex = entity.CurrentPlayerIndex,
             CurrentQuestionIndex = entity.CurrentQuestionIndex,
+            RoundNumber = entity.RoundNumber,
+            AnsweredRoundNumber = entity.AnsweredRoundNumber,
             QuestionOrder = JsonSerializer.Deserialize<List<int>>(entity.QuestionOrderJson) ?? new(),
+            RewardProgression = JsonSerializer.Deserialize<RewardProgressionState>(entity.RewardProgressionJson)
+                ?? new RewardProgressionState(),
+            PendingRoundResult = string.IsNullOrWhiteSpace(entity.PendingRoundResultJson)
+                ? null
+                : JsonSerializer.Deserialize<PendingRoundResult>(entity.PendingRoundResultJson),
+            Version = entity.Version,
             Status = Enum.Parse<GameStatus>(entity.Status),
             Mode = Enum.Parse<GameMode>(entity.Mode),
             JoinCode = entity.JoinCode,
@@ -165,7 +181,13 @@ public class PostgresGameSessionRepository : IGameSessionRepository
     {
         entity.CurrentPlayerIndex = session.CurrentPlayerIndex;
         entity.CurrentQuestionIndex = session.CurrentQuestionIndex;
+        entity.RoundNumber = session.RoundNumber;
+        entity.AnsweredRoundNumber = session.AnsweredRoundNumber;
         entity.QuestionOrderJson = JsonSerializer.Serialize(session.QuestionOrder);
+        entity.RewardProgressionJson = JsonSerializer.Serialize(session.RewardProgression);
+        entity.PendingRoundResultJson = session.PendingRoundResult is null
+            ? null
+            : JsonSerializer.Serialize(session.PendingRoundResult);
         entity.Status = session.Status.ToString();
         entity.Mode = session.Mode.ToString();
         entity.JoinCode = session.JoinCode;

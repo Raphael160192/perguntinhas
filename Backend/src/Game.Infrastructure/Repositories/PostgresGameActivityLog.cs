@@ -56,7 +56,15 @@ public class PostgresGameActivityLog : IGameActivityLog
                 Action = reward.Action,
                 Location = reward.Location,
                 TimeInSeconds = reward.TimeInSeconds,
-                CreatedAt = DateTime.UtcNow
+                TemplateId = reward.TemplateId,
+                CatalogVersion = reward.CatalogVersion,
+                IntensityLevel = reward.IntensityLevel,
+                ActorPlayerId = reward.ActorPlayerId == Guid.Empty ? null : reward.ActorPlayerId,
+                ReceiverPlayerId = reward.ReceiverPlayerId == Guid.Empty ? playerId : reward.ReceiverPlayerId,
+                RoundNumber = reward.RoundNumber == 0 ? null : reward.RoundNumber,
+                ExecutionType = reward.ExecutionType.ToString(),
+                ExecutionValue = string.IsNullOrWhiteSpace(reward.ExecutionValue) ? null : reward.ExecutionValue,
+                CreatedAt = reward.GeneratedAt
             });
 
             await _dbContext.SaveChangesAsync();

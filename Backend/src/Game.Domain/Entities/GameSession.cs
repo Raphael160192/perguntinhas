@@ -8,6 +8,11 @@ public class GameSession
     public List<Player> Players { get; set; } = new();
     public int CurrentPlayerIndex { get; set; }
     public int CurrentQuestionIndex { get; set; }
+    public int RoundNumber { get; set; } = 1;
+    public int? AnsweredRoundNumber { get; set; }
+    public PendingRoundResult? PendingRoundResult { get; set; }
+    public RewardProgressionState RewardProgression { get; set; } = new();
+    public long Version { get; set; }
 
     // IDs das perguntas na ordem sorteada para esta partida.
     public List<int> QuestionOrder { get; set; } = new();

@@ -1,9 +1,11 @@
 using Game.Api.Hubs;
 using Game.Application.Repositories;
+using Game.Application.Rewards;
 using Game.Application.Services;
 using Game.Infrastructure.Persistence;
 using Game.Infrastructure.Persistence.Seed;
 using Game.Infrastructure.Repositories;
+using Game.Infrastructure.Rewards;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -38,9 +40,35 @@ builder.Services.AddScoped<IGameSessionRepository, PostgresGameSessionRepository
 builder.Services.AddScoped<IQuestionRepository, PostgresQuestionRepository>();
 builder.Services.AddScoped<IGameActivityLog, PostgresGameActivityLog>();
 builder.Services.AddSingleton<IRewardProvider, RandomRewardProvider>();
+builder.Services.Configure<RewardsOptions>(builder.Configuration.GetSection(RewardsOptions.SectionName));
+builder.Services.AddSingleton<IRandomSource, SystemRandomSource>();
+builder.Services.AddSingleton<IRewardCatalog>(serviceProvider =>
+{
+    var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RewardsOptions>>().Value;
+    return new JsonRewardCatalog(options.CatalogResource);
+});
+builder.Services.AddSingleton<RewardSelector>();
+builder.Services.AddSingleton<LegacyRewardSelector>();
+builder.Services.AddSingleton<IRewardSelector>(serviceProvider =>
+{
+    var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RewardsOptions>>().Value;
+    return options.IntelligentSelectionEnabled
+        ? serviceProvider.GetRequiredService<RewardSelector>()
+        : serviceProvider.GetRequiredService<LegacyRewardSelector>();
+});
 builder.Services.AddScoped<IGameService, GameService>();
 
 var app = builder.Build();
+
+// Quando a seleção inteligente está ativa, carrega e valida o catálogo no
+// startup. Assim, um catálogo inválido impede o deploy de receber partidas.
+var rewardsOptions = app.Services
+    .GetRequiredService<Microsoft.Extensions.Options.IOptions<RewardsOptions>>()
+    .Value;
+if (rewardsOptions.IntelligentSelectionEnabled)
+{
+    _ = app.Services.GetRequiredService<IRewardCatalog>();
+}
 
 // O catálogo de perguntas é obrigatório para criar partidas. No startup, a API
 // aplica migrations pendentes e popula as perguntas iniciais se a tabela estiver vazia.

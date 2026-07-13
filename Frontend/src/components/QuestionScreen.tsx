@@ -4,7 +4,6 @@ import { OptionCard } from "./OptionCard";
 
 export interface QuestionScreenProps {
   state: GameState;
-  round: number;
   selectedOptionIndex: number | null;
   loading: boolean;
   // false quando este aparelho é o espectador (modo remoto, vez do outro jogador).
@@ -15,7 +14,6 @@ export interface QuestionScreenProps {
 
 export function QuestionScreen({
   state,
-  round,
   selectedOptionIndex,
   loading,
   interactive,
@@ -46,7 +44,7 @@ export function QuestionScreen({
         <div className="theme-pill">
           {question.theme} · Nível {question.level}
         </div>
-        <div className="round-counter">RODADA {round}</div>
+        <div className="round-counter">RODADA {state.roundNumber}</div>
       </div>
 
       <div className="question-text">{question.text}</div>

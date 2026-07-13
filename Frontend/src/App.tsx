@@ -20,6 +20,37 @@ import { PrizeSheet } from "./components/PrizeSheet";
 import { GameOverScreen } from "./components/GameOverScreen";
 import type { AnswerResult, GameState } from "./types/game";
 
+function answerResultFromPending(state: GameState): AnswerResult | null {
+  const pending = state.pendingRoundResult;
+  if (!pending || pending.roundNumber !== state.roundNumber) return null;
+
+  const currentPlayer = state.players.find((player) => player.id === pending.currentPlayerId);
+  const punishedPlayer = state.players.find((player) => player.id === pending.punishedPlayerId);
+  const winner = pending.winnerPlayerId
+    ? state.players.find((player) => player.id === pending.winnerPlayerId) ?? null
+    : null;
+
+  if (!currentPlayer || !punishedPlayer) return null;
+
+  return {
+    isCorrect: pending.isCorrect,
+    correctAnswerIndex: pending.correctAnswerIndex,
+    currentPlayer,
+    punishedPlayer,
+    lostClothing: pending.lostClothing,
+    reward: pending.rewardDetails?.text ?? pending.reward,
+    rewardDetails: pending.rewardDetails,
+    isGameOver: pending.isGameOver,
+    winner,
+    message: pending.isCorrect ? "Correto!" : "Errado!",
+    state
+  };
+}
+
+function hasTerminalPrize(result: AnswerResult | null): boolean {
+  return Boolean(result?.isGameOver && result.isCorrect && (result.rewardDetails || result.reward));
+}
+
 // Fases da interface. Toda regra do jogo vem da API — aqui só controlamos qual tela mostrar.
 type Phase =
   | "resuming"
@@ -40,7 +71,6 @@ export default function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [answerResult, setAnswerResult] = useState<AnswerResult | null>(null);
   const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(null);
-  const [round, setRound] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,8 +99,8 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Recupera a partida salva no aparelho e deriva a tela do estado do servidor.
-  // Takeovers de resultado/prêmio são transitórios: a retomada cai na pergunta atual.
+  // Recupera a partida salva no aparelho e deriva a tela do estado do servidor,
+  // incluindo resultado ou prêmio pendente da rodada persistida.
   async function resumeSession(saved: SavedSession) {
     setLoading(true);
     setError(null);
@@ -81,7 +111,8 @@ export default function App() {
       setGameState(state);
       setMyPlayerId(saved.playerId);
       setJoinCode(state.joinCode ?? saved.joinCode);
-      setAnswerResult(null);
+      const pendingResult = answerResultFromPending(state);
+      setAnswerResult(pendingResult);
       setSelectedOptionIndex(null);
 
       if (saved.playerId) {
@@ -90,6 +121,8 @@ export default function App() {
 
       if (state.status === "WaitingForOpponent") {
         setPhase("remote-create");
+      } else if (pendingResult && (state.status !== "Finished" || hasTerminalPrize(pendingResult))) {
+        setPhase("result");
       } else if (state.status === "Finished") {
         setPhase("gameover");
       } else {
@@ -108,7 +141,6 @@ export default function App() {
 
   function handlePlayerJoined(state: GameState) {
     setGameState(state);
-    setRound(1);
     setPhase("question");
   }
 
@@ -122,7 +154,6 @@ export default function App() {
     setGameState(state);
     setAnswerResult(null);
     setSelectedOptionIndex(null);
-    setRound((r) => r + 1);
     setPhase("question");
   }
 
@@ -130,7 +161,6 @@ export default function App() {
     setGameState(state);
     setAnswerResult(null);
     setSelectedOptionIndex(null);
-    setRound(1);
     setPhase("question");
   }
 
@@ -141,7 +171,18 @@ export default function App() {
     try {
       const state = await getGame(id);
       setGameState(state);
-      if (state.status === "Finished") setPhase("gameover");
+      const pendingResult = answerResultFromPending(state);
+      if (pendingResult && (state.status !== "Finished" || hasTerminalPrize(pendingResult))) {
+        setAnswerResult(pendingResult);
+        setPhase("result");
+      } else if (state.status === "Finished") {
+        setAnswerResult(null);
+        setPhase("gameover");
+      } else {
+        setAnswerResult(null);
+        setSelectedOptionIndex(null);
+        setPhase("question");
+      }
     } catch {
       // mantém a tela atual; próxima ação do usuário mostra o erro
     }
@@ -165,7 +206,6 @@ export default function App() {
       setGameId(created.gameId);
       setGameState(created.state);
       setMyPlayerId(null);
-      setRound(1);
       saveSession({ gameId: created.gameId, playerId: null, joinCode: null, playerName: null });
       setPhase("question");
     } catch (e) {
@@ -210,6 +250,8 @@ export default function App() {
       setGameId(joined.gameId);
       setGameState(joined.state);
       setMyPlayerId(joined.playerId);
+      const pendingResult = answerResultFromPending(joined.state);
+      setAnswerResult(pendingResult);
       saveSession({
         gameId: joined.gameId,
         playerId: joined.playerId,
@@ -217,8 +259,13 @@ export default function App() {
         playerName
       });
       await connectToGame(joined.gameId, hubHandlers);
-      setRound(1);
-      setPhase(joined.state.status === "Finished" ? "gameover" : "question");
+      setPhase(
+        pendingResult && (joined.state.status !== "Finished" || hasTerminalPrize(pendingResult))
+            ? "result"
+          : joined.state.status === "Finished"
+            ? "gameover"
+            : "question"
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível entrar na sala.");
     } finally {
@@ -247,13 +294,18 @@ export default function App() {
   function handleContinueFromResult() {
     if (!answerResult) return;
 
-    if (answerResult.isGameOver) {
-      setPhase("gameover");
-      return;
-    }
-
-    if (answerResult.isCorrect && answerResult.reward) {
+    if (answerResult.isCorrect && (answerResult.rewardDetails || answerResult.reward)) {
       setPhase("prize");
+    } else if (answerResult.isGameOver) {
+      setPhase("gameover");
+    } else {
+      void advanceRound();
+    }
+  }
+
+  function handleFinishPrize() {
+    if (answerResult?.isGameOver) {
+      setPhase("gameover");
     } else {
       void advanceRound();
     }
@@ -269,10 +321,6 @@ export default function App() {
       setGameState(state);
       setAnswerResult(null);
       setSelectedOptionIndex(null);
-      // No modo remoto o incremento vem do broadcast RoundAdvanced (que também chega a este aparelho).
-      if (!isRemote) {
-        setRound((r) => r + 1);
-      }
       setPhase("question");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível avançar a rodada.");
@@ -291,7 +339,6 @@ export default function App() {
       setGameState(state);
       setAnswerResult(null);
       setSelectedOptionIndex(null);
-      setRound(1);
       setPhase("question");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível reiniciar a partida.");
@@ -391,7 +438,6 @@ export default function App() {
         <>
           <QuestionScreen
             state={gameState}
-            round={round}
             selectedOptionIndex={selectedOptionIndex}
             loading={loading}
             interactive={isMyTurn}
@@ -416,10 +462,10 @@ export default function App() {
       {phase === "prize" && answerResult && (
         <PrizeSheet
           result={answerResult}
-          onDone={advanceRound}
-          onSkip={advanceRound}
+          onDone={handleFinishPrize}
+          onSkip={handleFinishPrize}
           loading={loading}
-          showActions={answeredByMe}
+          showActions={answeredByMe || answerResult.isGameOver}
         />
       )}
 

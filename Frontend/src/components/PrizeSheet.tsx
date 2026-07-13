@@ -11,6 +11,7 @@ export interface PrizeSheetProps {
 
 export function PrizeSheet({ result, onDone, onSkip, loading, showActions = true }: PrizeSheetProps) {
   const winnerName = result.currentPlayer.name;
+  const rewardText = result.rewardDetails?.text ?? result.reward;
 
   return (
     <div className="screen screen--question" style={{ position: "relative" }}>
@@ -25,9 +26,13 @@ export function PrizeSheet({ result, onDone, onSkip, loading, showActions = true
 
       <div className="prize-sheet">
         <div className="prize-sheet__handle" />
-        <div className="prize-sheet__label">PRÊMIO DA RODADA</div>
+        <div className="prize-sheet__label">
+          {result.rewardDetails
+            ? `NÍVEL ${result.rewardDetails.level} · ${result.rewardDetails.levelName}`
+            : "PRÊMIO DA RODADA"}
+        </div>
         <div className="prize-sheet__text">
-          {winnerName} ganhou: {result.reward}
+          {rewardText}
         </div>
         <div className="prize-sheet__note">Só vale se os dois toparem — pular também é jogar.</div>
         {showActions ? (

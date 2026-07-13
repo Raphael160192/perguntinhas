@@ -8,7 +8,11 @@ public class GameSessionEntityConfiguration : IEntityTypeConfiguration<GameSessi
 {
     public void Configure(EntityTypeBuilder<GameSessionEntity> builder)
     {
-        builder.ToTable("game_sessions");
+        builder.ToTable("game_sessions", table =>
+        {
+            table.HasCheckConstraint("CK_game_sessions_RoundNumber", "\"RoundNumber\" > 0");
+            table.HasCheckConstraint("CK_game_sessions_Version", "\"Version\" >= 0");
+        });
 
         builder.HasKey(s => s.Id);
 
@@ -16,6 +20,13 @@ public class GameSessionEntityConfiguration : IEntityTypeConfiguration<GameSessi
         builder.Property(s => s.Mode).HasMaxLength(20).IsRequired();
         builder.Property(s => s.JoinCode).HasMaxLength(8);
         builder.Property(s => s.QuestionOrderJson).HasColumnType("jsonb").IsRequired();
+        builder.Property(s => s.RoundNumber).HasDefaultValue(1).IsRequired();
+        builder.Property(s => s.RewardProgressionJson)
+            .HasColumnType("jsonb")
+            .HasDefaultValue("{\"currentLevel\":1,\"rewardsGeneratedInCurrentStage\":0,\"recentRewards\":[]}")
+            .IsRequired();
+        builder.Property(s => s.PendingRoundResultJson).HasColumnType("jsonb");
+        builder.Property(s => s.Version).IsConcurrencyToken();
 
         // Busca de sala por código: único apenas entre salas que ainda têm código.
         builder.HasIndex(s => s.JoinCode)

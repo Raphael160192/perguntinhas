@@ -57,6 +57,7 @@ export function ResultTakeover({ result, onContinue, loading, showActions = true
   const punished = result.punishedPlayer;
   const punishedIndex = result.state.players.findIndex((p) => p.id === punished.id);
   const opponentName = result.state.players.find((p) => p.id !== result.currentPlayer.id)?.name;
+  const rewardText = result.rewardDetails?.text ?? result.reward;
 
   const lossCard = result.lostClothing ? (
     <div className="loss-card">
@@ -88,13 +89,13 @@ export function ResultTakeover({ result, onContinue, loading, showActions = true
             {punished.name} perdeu 1 ponto — agora está com {punished.score}.
           </div>
           {lossCard}
-          {!showActions && result.reward && (
+          {!showActions && rewardText && (
             <div className="loss-card" style={{ borderColor: "rgba(201,160,92,.4)" }}>
               <div className="overline" style={{ color: "var(--premium)" }}>
                 PRÊMIO DA RODADA
               </div>
               <div className="loss-card__title">
-                {result.currentPlayer.name} ganhou: {result.reward}
+                {rewardText}
               </div>
             </div>
           )}
@@ -102,7 +103,7 @@ export function ResultTakeover({ result, onContinue, loading, showActions = true
         <div className="screen-footer">
           {showActions ? (
             <button className="btn btn--premium" onClick={onContinue} disabled={loading}>
-              {result.isGameOver ? "Ver resultado" : "Abrir prêmio da rodada"}
+              {result.isGameOver ? "Abrir prêmio final" : "Abrir prêmio da rodada"}
             </button>
           ) : (
             <div className="footer-note">aguardando {result.currentPlayer.name}…</div>

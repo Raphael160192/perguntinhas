@@ -25,14 +25,41 @@ export interface Question {
   // Nunca contém o índice da resposta correta - isso fica só no backend.
 }
 
+export interface RewardDetails {
+  templateId: string;
+  catalogVersion: string;
+  text: string;
+  level: 1 | 2 | 3 | 4;
+  levelName: string;
+  actorPlayerId: string;
+  receiverPlayerId: string;
+  executionType: "Seconds" | "Repetitions" | "FreeForm";
+  executionValue: string;
+}
+
+export interface PendingRoundResult {
+  roundNumber: number;
+  correctAnswerIndex: number;
+  isCorrect: boolean;
+  currentPlayerId: string;
+  punishedPlayerId: string;
+  lostClothing: string | null;
+  reward: string | null;
+  rewardDetails: RewardDetails | null;
+  isGameOver: boolean;
+  winnerPlayerId: string | null;
+}
+
 export interface GameState {
   gameId: string;
   status: "WaitingForOpponent" | "InProgress" | "Finished";
   mode: "Local" | "Remote";
   joinCode: string | null;
   currentPlayerIndex: number;
+  roundNumber: number;
   players: Player[];
   currentQuestion: Question | null;
+  pendingRoundResult: PendingRoundResult | null;
   winnerPlayerId: string | null;
   winnerName: string | null;
   createdAt: string;
@@ -60,6 +87,7 @@ export interface AnswerResult {
   punishedPlayer: Player;
   lostClothing: string | null;
   reward: string | null;
+  rewardDetails: RewardDetails | null;
   isGameOver: boolean;
   winner: Player | null;
   message: string;

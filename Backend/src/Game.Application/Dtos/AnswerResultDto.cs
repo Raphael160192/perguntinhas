@@ -8,10 +8,17 @@ public class AnswerResultDto
     public PlayerDto PunishedPlayer { get; set; } = null!;
     public string? LostClothing { get; set; }
     public string? Reward { get; set; }
+    public RewardDto? RewardDetails { get; set; }
     public bool IsGameOver { get; set; }
     public PlayerDto? Winner { get; set; }
     public string Message { get; set; } = string.Empty;
     public GameStateDto State { get; set; } = null!;
+}
+
+public class SubmitAnswerServiceResult
+{
+    public AnswerResultDto Result { get; set; } = null!;
+    public bool StateChanged { get; set; }
 }
 
 public class CreateGameRequestDto
@@ -49,11 +56,16 @@ public class JoinGameRequestDto
 {
     public string JoinCode { get; set; } = string.Empty;
     public string PlayerName { get; set; } = "Jogador 2";
+    public Guid? PlayerId { get; set; }
 }
 
 public class JoinGameResultDto
 {
     public Guid GameId { get; set; }
     public Guid PlayerId { get; set; }
+
+    // true quando o jogador já pertencia à sala (reentrada, não um join novo).
+    public bool Rejoined { get; set; }
+
     public GameStateDto State { get; set; } = null!;
 }
