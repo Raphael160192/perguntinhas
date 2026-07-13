@@ -11,15 +11,18 @@ public class GameService : IGameService
     private readonly IGameSessionRepository _sessionRepository;
     private readonly IQuestionRepository _questionRepository;
     private readonly IRewardProvider _rewardProvider;
+    private readonly IGameActivityLog _activityLog;
 
     public GameService(
         IGameSessionRepository sessionRepository,
         IQuestionRepository questionRepository,
-        IRewardProvider rewardProvider)
+        IRewardProvider rewardProvider,
+        IGameActivityLog activityLog)
     {
         _sessionRepository = sessionRepository;
         _questionRepository = questionRepository;
         _rewardProvider = rewardProvider;
+        _activityLog = activityLog;
     }
 
     public async Task<CreateGameResultDto> CreateGameAsync(CreateGameRequestDto request)
@@ -144,6 +147,15 @@ public class GameService : IGameService
         Reward? reward = isCorrect ? _rewardProvider.GenerateRandomReward() : null;
 
         await _sessionRepository.UpdateAsync(session);
+
+        // Histórico para análise (append-only; falha não interrompe a jogada).
+        await _activityLog.RecordAnswerAsync(
+            session.Id, outcome.CurrentPlayer.Id, question.Id, request.SelectedOptionIndex, isCorrect);
+
+        if (reward is not null)
+        {
+            await _activityLog.RecordRewardAsync(session.Id, outcome.CurrentPlayer.Id, reward);
+        }
 
         return new AnswerResultDto
         {

@@ -36,6 +36,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Persistência no PostgreSQL: perguntas e sessões de jogo (partidas sobrevivem a restarts).
 builder.Services.AddScoped<IGameSessionRepository, PostgresGameSessionRepository>();
 builder.Services.AddScoped<IQuestionRepository, PostgresQuestionRepository>();
+builder.Services.AddScoped<IGameActivityLog, PostgresGameActivityLog>();
 builder.Services.AddSingleton<IRewardProvider, RandomRewardProvider>();
 builder.Services.AddScoped<IGameService, GameService>();
 

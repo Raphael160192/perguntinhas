@@ -6,16 +6,21 @@ using Game.Domain.Enums;
 using Game.Infrastructure.Persistence;
 using Game.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Game.Infrastructure.Repositories;
 
 public class PostgresGameSessionRepository : IGameSessionRepository
 {
     private readonly ApplicationDbContext _dbContext;
+    private readonly ILogger<PostgresGameSessionRepository> _logger;
 
-    public PostgresGameSessionRepository(ApplicationDbContext dbContext)
+    public PostgresGameSessionRepository(
+        ApplicationDbContext dbContext,
+        ILogger<PostgresGameSessionRepository> logger)
     {
         _dbContext = dbContext;
+        _logger = logger;
     }
 
     public async Task<GameSession> AddAsync(GameSession session)
@@ -32,7 +37,6 @@ public class PostgresGameSessionRepository : IGameSessionRepository
         _dbContext.GameSessions.Add(entity);
         await _dbContext.SaveChangesAsync();
 
-        session.RowVersion = GetXmin(entity);
         return session;
     }
 
@@ -61,10 +65,6 @@ public class PostgresGameSessionRepository : IGameSessionRepository
             .FirstOrDefaultAsync(s => s.Id == session.Id)
             ?? throw new GameRuleException("Partida não encontrada.");
 
-        // Concorrência otimista: a versão carregada no início da operação precisa
-        // ser a mesma que está no banco agora (protege ações simultâneas no modo remoto).
-        _dbContext.Entry(entity).Property<uint>("xmin").OriginalValue = session.RowVersion;
-
         CopyToEntity(session, entity);
         entity.UpdatedAt = DateTime.UtcNow;
 
@@ -91,16 +91,19 @@ public class PostgresGameSessionRepository : IGameSessionRepository
             }
         }
 
+        // Concorrência otimista: o EF compara o xmin lido na consulta desta requisição
+        // com o valor atual do banco. Se outro request alterou a partida no meio do
+        // caminho (ex: join duplo ou restart nos dois aparelhos), o UPDATE não encontra
+        // a linha e cai aqui.
         try
         {
             await _dbContext.SaveChangesAsync();
         }
-        catch (DbUpdateConcurrencyException)
+        catch (DbUpdateConcurrencyException ex)
         {
+            _logger.LogWarning(ex, "Conflito de concorrência ao atualizar a partida {GameId}.", session.Id);
             throw new GameRuleException("Ação simultânea detectada — tente de novo.");
         }
-
-        session.RowVersion = GetXmin(entity);
     }
 
     private Task<GameSessionEntity?> LoadAsync(System.Linq.Expressions.Expression<Func<GameSessionEntity, bool>> predicate)
@@ -108,11 +111,6 @@ public class PostgresGameSessionRepository : IGameSessionRepository
         return _dbContext.GameSessions
             .Include(s => s.Players)
             .FirstOrDefaultAsync(predicate);
-    }
-
-    private uint GetXmin(GameSessionEntity entity)
-    {
-        return _dbContext.Entry(entity).Property<uint>("xmin").CurrentValue;
     }
 
     private GameSession ToDomain(GameSessionEntity entity)
@@ -129,7 +127,6 @@ public class PostgresGameSessionRepository : IGameSessionRepository
             WinnerPlayerId = entity.WinnerPlayerId,
             CreatedAt = entity.CreatedAt,
             FinishedAt = entity.FinishedAt,
-            RowVersion = GetXmin(entity),
             Players = entity.Players
                 .OrderBy(p => p.PlayerIndex)
                 .Select(p => new Player

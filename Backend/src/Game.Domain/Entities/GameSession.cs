@@ -18,9 +18,6 @@ public class GameSession
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? FinishedAt { get; set; }
 
-    // Token de concorrência otimista (xmin do PostgreSQL); preenchido ao carregar do banco.
-    public uint RowVersion { get; set; }
-
     public Player CurrentPlayer => Players[CurrentPlayerIndex];
     public Player OpponentPlayer => Players[1 - CurrentPlayerIndex];
 }
