@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:container": "set \"VITE_API_BASE_URL=https://perguntinhas.onrender.com\" && vite --host 0.0.0.0 --mode container",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },
