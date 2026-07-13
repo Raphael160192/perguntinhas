@@ -27,7 +27,9 @@ export interface Question {
 
 export interface GameState {
   gameId: string;
-  status: "InProgress" | "Finished";
+  status: "WaitingForOpponent" | "InProgress" | "Finished";
+  mode: "Local" | "Remote";
+  joinCode: string | null;
   currentPlayerIndex: number;
   players: Player[];
   currentQuestion: Question | null;
@@ -37,8 +39,22 @@ export interface GameState {
   finishedAt: string | null;
 }
 
+export interface CreateRemoteGameResult {
+  gameId: string;
+  joinCode: string;
+  playerId: string;
+  state: GameState;
+}
+
+export interface JoinGameResult {
+  gameId: string;
+  playerId: string;
+  state: GameState;
+}
+
 export interface AnswerResult {
   isCorrect: boolean;
+  correctAnswerIndex: number;
   currentPlayer: Player;
   punishedPlayer: Player;
   lostClothing: string | null;
