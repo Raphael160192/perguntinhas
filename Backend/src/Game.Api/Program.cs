@@ -13,14 +13,17 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();
 
-// SignalR cross-origin exige AllowCredentials, que não pode ser combinado com AllowAnyOrigin.
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-    ?? new[] { "http://localhost:5173" };
+    ?? Array.Empty<string>();
+var allowedOriginSet = allowedOrigins
+    .Where(origin => !string.IsNullOrWhiteSpace(origin))
+    .Select(origin => origin.Trim().TrimEnd('/'))
+    .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
-        policy.WithOrigins(allowedOrigins)
+        policy.SetIsOriginAllowed(origin => IsAllowedFrontendOrigin(origin, allowedOriginSet))
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials());
@@ -38,20 +41,21 @@ builder.Services.AddScoped<IGameService, GameService>();
 
 var app = builder.Build();
 
-// O seed do PostgreSQL popula apenas perguntas/opções.
-// Se o banco não estiver disponível, a API até inicia, mas criar partidas falhará
-// até que o PostgreSQL esteja acessível.
+// O catálogo de perguntas é obrigatório para criar partidas. No startup, a API
+// aplica migrations pendentes e popula as perguntas iniciais se a tabela estiver vazia.
 using (var scope = app.Services.CreateScope())
 {
     try
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await dbContext.Database.MigrateAsync();
         await QuestionSeeder.SeedAsync(dbContext);
     }
     catch (Exception ex)
     {
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogWarning(ex, "Não foi possível popular as perguntas no PostgreSQL no startup.");
+        logger.LogError(ex, "Não foi possível preparar o catálogo de perguntas no PostgreSQL.");
+        throw;
     }
 }
 
@@ -75,3 +79,27 @@ app.MapControllers();
 app.MapHub<GameHub>("/hubs/game");
 
 app.Run();
+
+static bool IsAllowedFrontendOrigin(string origin, ISet<string> configuredOrigins)
+{
+    var normalizedOrigin = origin.Trim().TrimEnd('/');
+    if (configuredOrigins.Contains(normalizedOrigin))
+    {
+        return true;
+    }
+
+    if (!Uri.TryCreate(normalizedOrigin, UriKind.Absolute, out var uri))
+    {
+        return false;
+    }
+
+    if (uri.Scheme == Uri.UriSchemeHttp &&
+        (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
+         uri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)))
+    {
+        return true;
+    }
+
+    return uri.Scheme == Uri.UriSchemeHttps &&
+        uri.Host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase);
+}
