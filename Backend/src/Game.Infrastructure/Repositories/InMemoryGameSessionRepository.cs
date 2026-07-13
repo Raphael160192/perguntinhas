@@ -19,6 +19,12 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
         return _sessions.TryGetValue(id, out var session) ? session : null;
     }
 
+    public GameSession? GetByJoinCode(string joinCode)
+    {
+        return _sessions.Values.FirstOrDefault(s =>
+            string.Equals(s.JoinCode, joinCode, StringComparison.OrdinalIgnoreCase));
+    }
+
     public void Update(GameSession session)
     {
         _sessions[session.Id] = session;

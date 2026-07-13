@@ -13,5 +13,8 @@ public class QuestionOptionEntityConfiguration : IEntityTypeConfiguration<Questi
         builder.HasKey(o => o.Id);
 
         builder.Property(o => o.Text).IsRequired();
+
+        builder.HasIndex(o => o.QuestionId);
+        builder.HasIndex(o => new { o.QuestionId, o.OptionIndex }).IsUnique();
     }
 }

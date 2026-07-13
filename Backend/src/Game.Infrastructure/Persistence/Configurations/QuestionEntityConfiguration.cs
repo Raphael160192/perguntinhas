@@ -12,8 +12,13 @@ public class QuestionEntityConfiguration : IEntityTypeConfiguration<QuestionEnti
 
         builder.HasKey(q => q.Id);
 
+        builder.Property(q => q.Id).ValueGeneratedNever();
         builder.Property(q => q.Text).IsRequired();
         builder.Property(q => q.Theme).HasMaxLength(100).IsRequired();
+        builder.Property(q => q.CreatedAt).IsRequired();
+        builder.Property(q => q.UpdatedAt).IsRequired();
+
+        builder.HasIndex(q => q.Active);
 
         builder.HasMany(q => q.Options)
             .WithOne(o => o.Question)

@@ -30,6 +30,8 @@ public class GameStateDto
 {
     public Guid GameId { get; set; }
     public string Status { get; set; } = string.Empty;
+    public string Mode { get; set; } = string.Empty;
+    public string? JoinCode { get; set; }
     public int CurrentPlayerIndex { get; set; }
     public List<PlayerDto> Players { get; set; } = new();
     public QuestionDto? CurrentQuestion { get; set; }

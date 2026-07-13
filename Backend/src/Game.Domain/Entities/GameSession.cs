@@ -10,6 +10,8 @@ public class GameSession
     public int CurrentQuestionIndex { get; set; }
     public List<int> QuestionOrder { get; set; } = new();
     public GameStatus Status { get; set; } = GameStatus.InProgress;
+    public GameMode Mode { get; set; } = GameMode.Local;
+    public string? JoinCode { get; set; }
     public Guid? WinnerPlayerId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? FinishedAt { get; set; }

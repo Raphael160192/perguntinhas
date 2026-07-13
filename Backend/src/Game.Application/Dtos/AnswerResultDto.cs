@@ -3,6 +3,7 @@ namespace Game.Application.Dtos;
 public class AnswerResultDto
 {
     public bool IsCorrect { get; set; }
+    public int CorrectAnswerIndex { get; set; }
     public PlayerDto CurrentPlayer { get; set; } = null!;
     public PlayerDto PunishedPlayer { get; set; } = null!;
     public string? LostClothing { get; set; }
@@ -28,4 +29,31 @@ public class CreateGameResultDto
 public class AnswerRequestDto
 {
     public int SelectedOptionIndex { get; set; }
+    public Guid? PlayerId { get; set; }
+}
+
+public class CreateRemoteGameRequestDto
+{
+    public string Player1Name { get; set; } = "Jogador 1";
+}
+
+public class CreateRemoteGameResultDto
+{
+    public Guid GameId { get; set; }
+    public string JoinCode { get; set; } = string.Empty;
+    public Guid PlayerId { get; set; }
+    public GameStateDto State { get; set; } = null!;
+}
+
+public class JoinGameRequestDto
+{
+    public string JoinCode { get; set; } = string.Empty;
+    public string PlayerName { get; set; } = "Jogador 2";
+}
+
+public class JoinGameResultDto
+{
+    public Guid GameId { get; set; }
+    public Guid PlayerId { get; set; }
+    public GameStateDto State { get; set; } = null!;
 }

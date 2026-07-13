@@ -17,16 +17,19 @@ public static class QuestionSeeder
         }
 
         var questions = QuestionSeedData.GetQuestions();
+        var now = DateTime.UtcNow;
 
         var entities = questions.Select(q =>
         {
             var questionEntity = new QuestionEntity
             {
-                Id = Guid.NewGuid(),
+                Id = q.Id,
                 Text = q.Text,
                 Theme = q.Theme,
                 Level = q.Level,
-                Active = true
+                Active = true,
+                CreatedAt = now,
+                UpdatedAt = now
             };
 
             questionEntity.Options = q.Options.Select((optionText, index) => new QuestionOptionEntity

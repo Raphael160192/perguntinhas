@@ -1,3 +1,4 @@
+using Game.Api.Hubs;
 using Game.Application.Repositories;
 using Game.Application.Services;
 using Game.Infrastructure.Persistence;
@@ -10,28 +11,36 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSignalR();
+
+// SignalR cross-origin exige AllowCredentials, que não pode ser combinado com AllowAnyOrigin.
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? new[] { "http://localhost:5173" };
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials());
 });
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// O core do jogo (GameSession em memória) ainda não foi migrado para o PostgreSQL nesta etapa.
-// O DbContext acima já está pronto para uso, mas os repositórios abaixo continuam em memória
-// para não alterar as regras de negócio existentes.
+// Nesta etapa, apenas o catálogo de perguntas vem do PostgreSQL.
+// Sessões de jogo, jogadores, respostas e recompensas continuam em memória.
 builder.Services.AddSingleton<IGameSessionRepository, InMemoryGameSessionRepository>();
-builder.Services.AddSingleton<IQuestionRepository, InMemoryQuestionRepository>();
+builder.Services.AddScoped<IQuestionRepository, PostgresQuestionRepository>();
 builder.Services.AddSingleton<IRewardProvider, RandomRewardProvider>();
 builder.Services.AddScoped<IGameService, GameService>();
 
 var app = builder.Build();
 
-// O seed do PostgreSQL é best-effort: se o banco ainda não estiver disponível,
-// o jogo continua funcionando normalmente com o repositório em memória.
+// O seed do PostgreSQL popula apenas perguntas/opções.
+// Se o banco não estiver disponível, a API até inicia, mas criar partidas falhará
+// até que o PostgreSQL esteja acessível.
 using (var scope = app.Services.CreateScope())
 {
     try
@@ -42,7 +51,7 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogWarning(ex, "Não foi possível popular o PostgreSQL no startup. O jogo continuará usando o repositório em memória.");
+        logger.LogWarning(ex, "Não foi possível popular as perguntas no PostgreSQL no startup.");
     }
 }
 
@@ -54,10 +63,15 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowFrontend");
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<GameHub>("/hubs/game");
 
 app.Run();
