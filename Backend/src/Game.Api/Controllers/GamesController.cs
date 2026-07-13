@@ -21,23 +21,30 @@ public class GamesController : ControllerBase
     }
 
     [HttpPost]
-    public ActionResult<CreateGameResultDto> CreateGame([FromBody] CreateGameRequest request)
-    {
-        var result = _gameService.CreateGame(new CreateGameRequestDto
-        {
-            Player1Name = request.Player1Name,
-            Player2Name = request.Player2Name
-        });
-
-        return Ok(result);
-    }
-
-    [HttpPost("remote")]
-    public ActionResult<CreateRemoteGameResultDto> CreateRemoteGame([FromBody] CreateRemoteGameRequest request)
+    public async Task<ActionResult<CreateGameResultDto>> CreateGame([FromBody] CreateGameRequest request)
     {
         try
         {
-            var result = _gameService.CreateRemoteGame(new CreateRemoteGameRequestDto
+            var result = await _gameService.CreateGameAsync(new CreateGameRequestDto
+            {
+                Player1Name = request.Player1Name,
+                Player2Name = request.Player2Name
+            });
+
+            return Ok(result);
+        }
+        catch (GameRuleException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("remote")]
+    public async Task<ActionResult<CreateRemoteGameResultDto>> CreateRemoteGame([FromBody] CreateRemoteGameRequest request)
+    {
+        try
+        {
+            var result = await _gameService.CreateRemoteGameAsync(new CreateRemoteGameRequestDto
             {
                 Player1Name = request.Player1Name
             });
@@ -55,7 +62,7 @@ public class GamesController : ControllerBase
     {
         try
         {
-            var result = _gameService.JoinGame(new JoinGameRequestDto
+            var result = await _gameService.JoinGameAsync(new JoinGameRequestDto
             {
                 JoinCode = request.JoinCode,
                 PlayerName = request.PlayerName
@@ -72,16 +79,16 @@ public class GamesController : ControllerBase
     }
 
     [HttpGet("{gameId}")]
-    public ActionResult<GameStateDto> GetState(Guid gameId)
+    public async Task<ActionResult<GameStateDto>> GetState(Guid gameId)
     {
-        var state = _gameService.GetState(gameId);
+        var state = await _gameService.GetStateAsync(gameId);
         return state is null ? NotFound() : Ok(state);
     }
 
     [HttpGet("{gameId}/question")]
-    public ActionResult<QuestionDto> GetCurrentQuestion(Guid gameId)
+    public async Task<ActionResult<QuestionDto>> GetCurrentQuestion(Guid gameId)
     {
-        var question = _gameService.GetCurrentQuestion(gameId);
+        var question = await _gameService.GetCurrentQuestionAsync(gameId);
         return question is null ? NotFound() : Ok(question);
     }
 
@@ -90,7 +97,7 @@ public class GamesController : ControllerBase
     {
         try
         {
-            var result = _gameService.SubmitAnswer(gameId, new AnswerRequestDto
+            var result = await _gameService.SubmitAnswerAsync(gameId, new AnswerRequestDto
             {
                 SelectedOptionIndex = request.SelectedOptionIndex,
                 PlayerId = request.PlayerId
@@ -116,7 +123,7 @@ public class GamesController : ControllerBase
     {
         try
         {
-            var state = _gameService.NextRound(gameId, request?.PlayerId);
+            var state = await _gameService.NextRoundAsync(gameId, request?.PlayerId);
 
             if (state is null)
             {
@@ -136,16 +143,23 @@ public class GamesController : ControllerBase
     [HttpPost("{gameId}/restart")]
     public async Task<ActionResult<GameStateDto>> Restart(Guid gameId)
     {
-        var state = _gameService.Restart(gameId);
-
-        if (state is null)
+        try
         {
-            return NotFound();
+            var state = await _gameService.RestartAsync(gameId);
+
+            if (state is null)
+            {
+                return NotFound();
+            }
+
+            await BroadcastAsync(gameId, "GameRestarted", state);
+
+            return Ok(state);
         }
-
-        await BroadcastAsync(gameId, "GameRestarted", state);
-
-        return Ok(state);
+        catch (GameRuleException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
     private Task BroadcastAsync(Guid gameId, string eventName, object payload)

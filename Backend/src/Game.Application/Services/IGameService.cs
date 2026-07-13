@@ -4,12 +4,12 @@ namespace Game.Application.Services;
 
 public interface IGameService
 {
-    CreateGameResultDto CreateGame(CreateGameRequestDto request);
-    CreateRemoteGameResultDto CreateRemoteGame(CreateRemoteGameRequestDto request);
-    JoinGameResultDto JoinGame(JoinGameRequestDto request);
-    GameStateDto? GetState(Guid gameId);
-    QuestionDto? GetCurrentQuestion(Guid gameId);
-    AnswerResultDto? SubmitAnswer(Guid gameId, AnswerRequestDto request);
-    GameStateDto? NextRound(Guid gameId, Guid? playerId = null);
-    GameStateDto? Restart(Guid gameId);
+    Task<CreateGameResultDto> CreateGameAsync(CreateGameRequestDto request);
+    Task<CreateRemoteGameResultDto> CreateRemoteGameAsync(CreateRemoteGameRequestDto request);
+    Task<JoinGameResultDto> JoinGameAsync(JoinGameRequestDto request);
+    Task<GameStateDto?> GetStateAsync(Guid gameId);
+    Task<QuestionDto?> GetCurrentQuestionAsync(Guid gameId);
+    Task<AnswerResultDto?> SubmitAnswerAsync(Guid gameId, AnswerRequestDto request);
+    Task<GameStateDto?> NextRoundAsync(Guid gameId, Guid? playerId = null);
+    Task<GameStateDto?> RestartAsync(Guid gameId);
 }

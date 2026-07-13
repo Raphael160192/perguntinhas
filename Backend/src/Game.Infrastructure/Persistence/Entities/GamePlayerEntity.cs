@@ -4,6 +4,10 @@ public class GamePlayerEntity
 {
     public Guid Id { get; set; }
     public Guid GameSessionId { get; set; }
+
+    // Posição do jogador na partida (0 = jogador 1, 1 = jogador 2).
+    public int PlayerIndex { get; set; }
+
     public string Name { get; set; } = string.Empty;
     public int Score { get; set; }
     public bool Socks { get; set; }

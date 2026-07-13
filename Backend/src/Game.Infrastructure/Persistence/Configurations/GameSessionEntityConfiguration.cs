@@ -13,6 +13,22 @@ public class GameSessionEntityConfiguration : IEntityTypeConfiguration<GameSessi
         builder.HasKey(s => s.Id);
 
         builder.Property(s => s.Status).HasMaxLength(20).IsRequired();
+        builder.Property(s => s.Mode).HasMaxLength(20).IsRequired();
+        builder.Property(s => s.JoinCode).HasMaxLength(8);
+        builder.Property(s => s.QuestionOrderJson).HasColumnType("jsonb").IsRequired();
+
+        // Busca de sala por código: único apenas entre salas que ainda têm código.
+        builder.HasIndex(s => s.JoinCode)
+            .IsUnique()
+            .HasFilter("\"JoinCode\" IS NOT NULL");
+
+        // Concorrência otimista: usa a coluna de sistema xmin do PostgreSQL.
+        // Protege contra ações simultâneas dos dois aparelhos no modo remoto.
+        builder.Property<uint>("xmin")
+            .HasColumnName("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
 
         builder.HasMany(s => s.Players)
             .WithOne(p => p.GameSession)

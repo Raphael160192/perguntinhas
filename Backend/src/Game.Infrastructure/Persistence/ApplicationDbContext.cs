@@ -11,10 +11,13 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<QuestionEntity> Questions => Set<QuestionEntity>();
     public DbSet<QuestionOptionEntity> QuestionOptions => Set<QuestionOptionEntity>();
+    public DbSet<GameSessionEntity> GameSessions => Set<GameSessionEntity>();
+    public DbSet<GamePlayerEntity> GamePlayers => Set<GamePlayerEntity>();
+    public DbSet<GameAnswerEntity> GameAnswers => Set<GameAnswerEntity>();
+    public DbSet<RewardEntity> Rewards => Set<RewardEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.ApplyConfiguration(new Configurations.QuestionEntityConfiguration());
-        modelBuilder.ApplyConfiguration(new Configurations.QuestionOptionEntityConfiguration());
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
     }
 }

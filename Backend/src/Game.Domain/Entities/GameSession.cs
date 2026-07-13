@@ -8,6 +8,8 @@ public class GameSession
     public List<Player> Players { get; set; } = new();
     public int CurrentPlayerIndex { get; set; }
     public int CurrentQuestionIndex { get; set; }
+
+    // IDs das perguntas na ordem sorteada para esta partida.
     public List<int> QuestionOrder { get; set; } = new();
     public GameStatus Status { get; set; } = GameStatus.InProgress;
     public GameMode Mode { get; set; } = GameMode.Local;
@@ -15,6 +17,9 @@ public class GameSession
     public Guid? WinnerPlayerId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? FinishedAt { get; set; }
+
+    // Token de concorrência otimista (xmin do PostgreSQL); preenchido ao carregar do banco.
+    public uint RowVersion { get; set; }
 
     public Player CurrentPlayer => Players[CurrentPlayerIndex];
     public Player OpponentPlayer => Players[1 - CurrentPlayerIndex];

@@ -22,7 +22,7 @@ public class GameService : IGameService
         _rewardProvider = rewardProvider;
     }
 
-    public CreateGameResultDto CreateGame(CreateGameRequestDto request)
+    public async Task<CreateGameResultDto> CreateGameAsync(CreateGameRequestDto request)
     {
         var session = new GameSession
         {
@@ -31,50 +31,50 @@ public class GameService : IGameService
                 new() { Name = string.IsNullOrWhiteSpace(request.Player1Name) ? "Jogador 1" : request.Player1Name },
                 new() { Name = string.IsNullOrWhiteSpace(request.Player2Name) ? "Jogador 2" : request.Player2Name }
             },
-            QuestionOrder = ShuffleQuestionOrder(),
+            QuestionOrder = await ShuffleQuestionOrderAsync(),
             CurrentPlayerIndex = 0,
             CurrentQuestionIndex = 0
         };
 
-        _sessionRepository.Add(session);
+        await _sessionRepository.AddAsync(session);
 
         return new CreateGameResultDto
         {
             GameId = session.Id,
-            State = ToStateDto(session)
+            State = await ToStateDtoAsync(session)
         };
     }
 
-    public CreateRemoteGameResultDto CreateRemoteGame(CreateRemoteGameRequestDto request)
+    public async Task<CreateRemoteGameResultDto> CreateRemoteGameAsync(CreateRemoteGameRequestDto request)
     {
         var session = new GameSession
         {
             Mode = GameMode.Remote,
             Status = GameStatus.WaitingForOpponent,
-            JoinCode = GenerateUniqueJoinCode(),
+            JoinCode = await GenerateUniqueJoinCodeAsync(),
             Players = new List<Player>
             {
                 new() { Name = string.IsNullOrWhiteSpace(request.Player1Name) ? "Jogador 1" : request.Player1Name }
             },
-            QuestionOrder = ShuffleQuestionOrder(),
+            QuestionOrder = await ShuffleQuestionOrderAsync(),
             CurrentPlayerIndex = 0,
             CurrentQuestionIndex = 0
         };
 
-        _sessionRepository.Add(session);
+        await _sessionRepository.AddAsync(session);
 
         return new CreateRemoteGameResultDto
         {
             GameId = session.Id,
             JoinCode = session.JoinCode!,
             PlayerId = session.Players[0].Id,
-            State = ToStateDto(session)
+            State = await ToStateDtoAsync(session)
         };
     }
 
-    public JoinGameResultDto JoinGame(JoinGameRequestDto request)
+    public async Task<JoinGameResultDto> JoinGameAsync(JoinGameRequestDto request)
     {
-        var session = _sessionRepository.GetByJoinCode(request.JoinCode?.Trim() ?? string.Empty);
+        var session = await _sessionRepository.GetByJoinCodeAsync(request.JoinCode?.Trim() ?? string.Empty);
 
         if (session is null)
         {
@@ -94,36 +94,36 @@ public class GameService : IGameService
         session.Players.Add(player2);
         session.Status = GameStatus.InProgress;
 
-        _sessionRepository.Update(session);
+        await _sessionRepository.UpdateAsync(session);
 
         return new JoinGameResultDto
         {
             GameId = session.Id,
             PlayerId = player2.Id,
-            State = ToStateDto(session)
+            State = await ToStateDtoAsync(session)
         };
     }
 
-    public GameStateDto? GetState(Guid gameId)
+    public async Task<GameStateDto?> GetStateAsync(Guid gameId)
     {
-        var session = _sessionRepository.Get(gameId);
-        return session is null ? null : ToStateDto(session);
+        var session = await _sessionRepository.GetAsync(gameId);
+        return session is null ? null : await ToStateDtoAsync(session);
     }
 
-    public QuestionDto? GetCurrentQuestion(Guid gameId)
+    public async Task<QuestionDto?> GetCurrentQuestionAsync(Guid gameId)
     {
-        var session = _sessionRepository.Get(gameId);
+        var session = await _sessionRepository.GetAsync(gameId);
         if (session is null)
         {
             return null;
         }
 
-        return ToQuestionDto(GetCurrentQuestionEntity(session));
+        return ToQuestionDto(await GetCurrentQuestionEntityAsync(session));
     }
 
-    public AnswerResultDto? SubmitAnswer(Guid gameId, AnswerRequestDto request)
+    public async Task<AnswerResultDto?> SubmitAnswerAsync(Guid gameId, AnswerRequestDto request)
     {
-        var session = _sessionRepository.Get(gameId);
+        var session = await _sessionRepository.GetAsync(gameId);
         if (session is null)
         {
             return null;
@@ -136,14 +136,14 @@ public class GameService : IGameService
             throw new GameRuleException("A partida não está em andamento.");
         }
 
-        var question = GetCurrentQuestionEntity(session);
+        var question = await GetCurrentQuestionEntityAsync(session);
         bool isCorrect = request.SelectedOptionIndex == question.CorrectAnswerIndex;
 
         var outcome = GameRules.ApplyAnswer(session, isCorrect);
 
         Reward? reward = isCorrect ? _rewardProvider.GenerateRandomReward() : null;
 
-        _sessionRepository.Update(session);
+        await _sessionRepository.UpdateAsync(session);
 
         return new AnswerResultDto
         {
@@ -156,13 +156,13 @@ public class GameService : IGameService
             IsGameOver = outcome.IsGameOver,
             Winner = outcome.Winner is null ? null : ToPlayerDto(outcome.Winner),
             Message = isCorrect ? "Correto!" : "Errado!",
-            State = ToStateDto(session)
+            State = await ToStateDtoAsync(session)
         };
     }
 
-    public GameStateDto? NextRound(Guid gameId, Guid? playerId = null)
+    public async Task<GameStateDto?> NextRoundAsync(Guid gameId, Guid? playerId = null)
     {
-        var session = _sessionRepository.Get(gameId);
+        var session = await _sessionRepository.GetAsync(gameId);
         if (session is null)
         {
             return null;
@@ -176,14 +176,14 @@ public class GameService : IGameService
             session.CurrentQuestionIndex = (session.CurrentQuestionIndex + 1) % session.QuestionOrder.Count;
         }
 
-        _sessionRepository.Update(session);
+        await _sessionRepository.UpdateAsync(session);
 
-        return ToStateDto(session);
+        return await ToStateDtoAsync(session);
     }
 
-    public GameStateDto? Restart(Guid gameId)
+    public async Task<GameStateDto?> RestartAsync(Guid gameId)
     {
-        var session = _sessionRepository.Get(gameId);
+        var session = await _sessionRepository.GetAsync(gameId);
         if (session is null)
         {
             return null;
@@ -196,16 +196,16 @@ public class GameService : IGameService
             player.ClothingLostAtScores.Clear();
         }
 
-        session.QuestionOrder = ShuffleQuestionOrder();
+        session.QuestionOrder = await ShuffleQuestionOrderAsync();
         session.CurrentPlayerIndex = 0;
         session.CurrentQuestionIndex = 0;
         session.Status = GameStatus.InProgress;
         session.WinnerPlayerId = null;
         session.FinishedAt = null;
 
-        _sessionRepository.Update(session);
+        await _sessionRepository.UpdateAsync(session);
 
-        return ToStateDto(session);
+        return await ToStateDtoAsync(session);
     }
 
     // Em partidas remotas, apenas o jogador da vez pode responder/avançar.
@@ -226,7 +226,7 @@ public class GameService : IGameService
     // Alfabeto sem caracteres ambíguos (0/O, 1/I/L).
     private const string JoinCodeAlphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
-    private string GenerateUniqueJoinCode()
+    private async Task<string> GenerateUniqueJoinCodeAsync()
     {
         for (int attempt = 0; attempt < 50; attempt++)
         {
@@ -234,7 +234,7 @@ public class GameService : IGameService
                 .Select(_ => JoinCodeAlphabet[Random.Shared.Next(JoinCodeAlphabet.Length)])
                 .ToArray());
 
-            if (_sessionRepository.GetByJoinCode(code) is null)
+            if (await _sessionRepository.GetByJoinCodeAsync(code) is null)
             {
                 return code;
             }
@@ -243,26 +243,42 @@ public class GameService : IGameService
         throw new GameRuleException("Não foi possível gerar um código de sala. Tente novamente.");
     }
 
-    private List<int> ShuffleQuestionOrder()
+    // Sorteia a ordem das perguntas como lista de IDs (estável mesmo se o catálogo mudar).
+    private async Task<List<int>> ShuffleQuestionOrderAsync()
     {
-        var questions = _questionRepository.GetAll();
-        var indices = Enumerable.Range(0, questions.Count).ToList();
-        var random = Random.Shared;
+        var questions = await _questionRepository.GetAllAsync();
 
-        for (int i = indices.Count - 1; i > 0; i--)
+        if (questions.Count == 0)
         {
-            int j = random.Next(i + 1);
-            (indices[i], indices[j]) = (indices[j], indices[i]);
+            throw new GameRuleException("Não há perguntas cadastradas para iniciar uma partida.");
         }
 
-        return indices;
+        var ids = questions.Select(q => q.Id).ToList();
+        var random = Random.Shared;
+
+        for (int i = ids.Count - 1; i > 0; i--)
+        {
+            int j = random.Next(i + 1);
+            (ids[i], ids[j]) = (ids[j], ids[i]);
+        }
+
+        return ids;
     }
 
-    private Question GetCurrentQuestionEntity(GameSession session)
+    private async Task<Question> GetCurrentQuestionEntityAsync(GameSession session)
     {
-        var questions = _questionRepository.GetAll();
         int questionId = session.QuestionOrder[session.CurrentQuestionIndex];
-        return questions[questionId];
+        var question = await _questionRepository.GetByIdAsync(questionId);
+
+        // Pergunta desativada/removida no meio da partida: pula para a próxima disponível.
+        if (question is null)
+        {
+            var questions = await _questionRepository.GetAllAsync();
+            question = questions.FirstOrDefault(q => session.QuestionOrder.Contains(q.Id))
+                ?? throw new GameRuleException("Não há perguntas disponíveis para esta partida.");
+        }
+
+        return question;
     }
 
     private static QuestionDto ToQuestionDto(Question question) => new()
@@ -289,7 +305,7 @@ public class GameService : IGameService
         RemainingClothesCount = player.Clothes.RemainingCount()
     };
 
-    private GameStateDto ToStateDto(GameSession session)
+    private async Task<GameStateDto> ToStateDtoAsync(GameSession session)
     {
         var winner = session.WinnerPlayerId.HasValue
             ? session.Players.FirstOrDefault(p => p.Id == session.WinnerPlayerId.Value)
@@ -304,7 +320,7 @@ public class GameService : IGameService
             CurrentPlayerIndex = session.CurrentPlayerIndex,
             Players = session.Players.Select(ToPlayerDto).ToList(),
             CurrentQuestion = session.Status == GameStatus.InProgress
-                ? ToQuestionDto(GetCurrentQuestionEntity(session))
+                ? ToQuestionDto(await GetCurrentQuestionEntityAsync(session))
                 : null,
             WinnerPlayerId = session.WinnerPlayerId,
             WinnerName = winner?.Name,

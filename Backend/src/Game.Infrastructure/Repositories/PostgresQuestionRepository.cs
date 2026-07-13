@@ -1,6 +1,7 @@
 using Game.Application.Repositories;
 using Game.Domain.Entities;
 using Game.Infrastructure.Persistence;
+using Game.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Game.Infrastructure.Repositories;
@@ -14,28 +15,41 @@ public class PostgresQuestionRepository : IQuestionRepository
         _dbContext = dbContext;
     }
 
-    public List<Question> GetAll()
+    public async Task<List<Question>> GetAllAsync()
     {
-        return _dbContext.Questions
+        var entities = await _dbContext.Questions
             .AsNoTracking()
             .Where(q => q.Active)
             .Include(q => q.Options)
             .OrderBy(q => q.Id)
-            .Select(q => new Question
-            {
-                Id = q.Id,
-                Text = q.Text,
-                Theme = q.Theme,
-                Level = q.Level,
-                Options = q.Options
-                    .OrderBy(o => o.OptionIndex)
-                    .Select(o => o.Text)
-                    .ToList(),
-                CorrectAnswerIndex = q.Options
-                    .Where(o => o.IsCorrect)
-                    .Select(o => o.OptionIndex)
-                    .Single()
-            })
-            .ToList();
+            .ToListAsync();
+
+        return entities.Select(ToDomain).ToList();
     }
+
+    public async Task<Question?> GetByIdAsync(int id)
+    {
+        var entity = await _dbContext.Questions
+            .AsNoTracking()
+            .Include(q => q.Options)
+            .FirstOrDefaultAsync(q => q.Id == id && q.Active);
+
+        return entity is null ? null : ToDomain(entity);
+    }
+
+    private static Question ToDomain(QuestionEntity entity) => new()
+    {
+        Id = entity.Id,
+        Text = entity.Text,
+        Theme = entity.Theme,
+        Level = entity.Level,
+        Options = entity.Options
+            .OrderBy(o => o.OptionIndex)
+            .Select(o => o.Text)
+            .ToList(),
+        CorrectAnswerIndex = entity.Options
+            .Where(o => o.IsCorrect)
+            .Select(o => o.OptionIndex)
+            .Single()
+    };
 }

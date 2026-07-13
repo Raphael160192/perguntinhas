@@ -14,5 +14,7 @@ public class GamePlayerEntityConfiguration : IEntityTypeConfiguration<GamePlayer
 
         builder.Property(p => p.Name).HasMaxLength(100).IsRequired();
         builder.Property(p => p.ClothingLostAtScoresJson).HasColumnType("jsonb").IsRequired();
+
+        builder.HasIndex(p => new { p.GameSessionId, p.PlayerIndex }).IsUnique();
     }
 }

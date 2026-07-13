@@ -4,5 +4,6 @@ namespace Game.Application.Repositories;
 
 public interface IQuestionRepository
 {
-    List<Question> GetAll();
+    Task<List<Question>> GetAllAsync();
+    Task<Question?> GetByIdAsync(int id);
 }

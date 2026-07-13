@@ -33,9 +33,8 @@ builder.Services.AddCors(options =>
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(ToNpgsqlConnectionString(builder.Configuration.GetConnectionString("DefaultConnection"))));
 
-// Nesta etapa, apenas o catálogo de perguntas vem do PostgreSQL.
-// Sessões de jogo, jogadores, respostas e recompensas continuam em memória.
-builder.Services.AddSingleton<IGameSessionRepository, InMemoryGameSessionRepository>();
+// Persistência no PostgreSQL: perguntas e sessões de jogo (partidas sobrevivem a restarts).
+builder.Services.AddScoped<IGameSessionRepository, PostgresGameSessionRepository>();
 builder.Services.AddScoped<IQuestionRepository, PostgresQuestionRepository>();
 builder.Services.AddSingleton<IRewardProvider, RandomRewardProvider>();
 builder.Services.AddScoped<IGameService, GameService>();

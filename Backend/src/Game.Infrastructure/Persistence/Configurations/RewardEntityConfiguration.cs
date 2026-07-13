@@ -15,5 +15,12 @@ public class RewardEntityConfiguration : IEntityTypeConfiguration<RewardEntity>
         builder.Property(r => r.Text).IsRequired();
         builder.Property(r => r.Action).HasMaxLength(50).IsRequired();
         builder.Property(r => r.Location).HasMaxLength(50).IsRequired();
+
+        builder.HasIndex(r => r.GameSessionId);
+
+        builder.HasOne(r => r.GameSession)
+            .WithMany()
+            .HasForeignKey(r => r.GameSessionId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
