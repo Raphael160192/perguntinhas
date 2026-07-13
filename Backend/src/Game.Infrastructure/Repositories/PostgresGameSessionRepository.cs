@@ -91,19 +91,23 @@ public class PostgresGameSessionRepository : IGameSessionRepository
             }
         }
 
-        // Concorrência otimista: o EF compara o xmin lido na consulta desta requisição
-        // com o valor atual do banco. Se outro request alterou a partida no meio do
-        // caminho (ex: join duplo ou restart nos dois aparelhos), o UPDATE não encontra
-        // a linha e cai aqui.
         try
         {
             await _dbContext.SaveChangesAsync();
         }
-        catch (DbUpdateConcurrencyException ex)
+        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
         {
-            _logger.LogWarning(ex, "Conflito de concorrência ao atualizar a partida {GameId}.", session.Id);
-            throw new GameRuleException("Ação simultânea detectada — tente de novo.");
+            // Join duplo: duas pessoas entrando com o mesmo código ao mesmo tempo.
+            // O índice único (GameSessionId, PlayerIndex) barra o segundo insert.
+            _logger.LogWarning(ex, "Join simultâneo na partida {GameId}.", session.Id);
+            throw new GameRuleException("Esta sala já está cheia.");
         }
+    }
+
+    private static bool IsUniqueViolation(DbUpdateException ex)
+    {
+        return ex.InnerException is Npgsql.PostgresException pg
+            && pg.SqlState == Npgsql.PostgresErrorCodes.UniqueViolation;
     }
 
     private Task<GameSessionEntity?> LoadAsync(System.Linq.Expressions.Expression<Func<GameSessionEntity, bool>> predicate)

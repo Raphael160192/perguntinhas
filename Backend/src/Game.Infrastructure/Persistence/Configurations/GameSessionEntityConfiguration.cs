@@ -22,14 +22,6 @@ public class GameSessionEntityConfiguration : IEntityTypeConfiguration<GameSessi
             .IsUnique()
             .HasFilter("\"JoinCode\" IS NOT NULL");
 
-        // Concorrência otimista: usa a coluna de sistema xmin do PostgreSQL.
-        // Protege contra ações simultâneas dos dois aparelhos no modo remoto.
-        builder.Property<uint>("xmin")
-            .HasColumnName("xmin")
-            .HasColumnType("xid")
-            .ValueGeneratedOnAddOrUpdate()
-            .IsConcurrencyToken();
-
         builder.HasMany(s => s.Players)
             .WithOne(p => p.GameSession)
             .HasForeignKey(p => p.GameSessionId)
