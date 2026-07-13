@@ -73,12 +73,19 @@ public class PostgresGameSessionRepository : IGameSessionRepository
         {
             if (entity.Players.All(p => p.Id != player.Id))
             {
-                entity.Players.Add(new GamePlayerEntity
+                var playerEntity = new GamePlayerEntity
                 {
                     Id = player.Id,
                     GameSessionId = entity.Id,
                     PlayerIndex = session.Players.IndexOf(player)
-                });
+                };
+
+                entity.Players.Add(playerEntity);
+
+                // Marca explicitamente como INSERT: como o Id já vem preenchido, o EF
+                // assumiria que a entidade existe no banco e emitiria um UPDATE fantasma
+                // ("expected 1 row, affected 0").
+                _dbContext.GamePlayers.Add(playerEntity);
             }
         }
 
