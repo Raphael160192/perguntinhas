@@ -5,6 +5,7 @@ using Game.Infrastructure.Persistence;
 using Game.Infrastructure.Persistence.Seed;
 using Game.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,7 +31,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(ToNpgsqlConnectionString(builder.Configuration.GetConnectionString("DefaultConnection"))));
 
 // Nesta etapa, apenas o catálogo de perguntas vem do PostgreSQL.
 // Sessões de jogo, jogadores, respostas e recompensas continuam em memória.
@@ -102,4 +103,32 @@ static bool IsAllowedFrontendOrigin(string origin, ISet<string> configuredOrigin
 
     return uri.Scheme == Uri.UriSchemeHttps &&
         uri.Host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase);
+}
+
+static string ToNpgsqlConnectionString(string? connectionString)
+{
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        return string.Empty;
+    }
+
+    if (!connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) &&
+        !connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+    {
+        return connectionString;
+    }
+
+    var uri = new Uri(connectionString);
+    var userInfo = uri.UserInfo.Split(':', 2);
+
+    return new NpgsqlConnectionStringBuilder
+    {
+        Host = uri.Host,
+        Port = uri.IsDefaultPort ? 5432 : uri.Port,
+        Database = Uri.UnescapeDataString(uri.AbsolutePath.TrimStart('/')),
+        Username = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : string.Empty,
+        Password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : string.Empty,
+        SslMode = SslMode.Require,
+        TrustServerCertificate = true
+    }.ConnectionString;
 }
