@@ -7,7 +7,7 @@ COPY Backend/src/Game.Application/Game.Application.csproj Backend/src/Game.Appli
 COPY Backend/src/Game.Domain/Game.Domain.csproj Backend/src/Game.Domain/
 COPY Backend/src/Game.Infrastructure/Game.Infrastructure.csproj Backend/src/Game.Infrastructure/
 
-RUN dotnet restore Backend/src/Game.sln
+RUN dotnet restore Backend/src/Game.Api/Game.Api.csproj
 
 COPY Backend/src Backend/src
 
