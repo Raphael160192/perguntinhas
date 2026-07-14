@@ -9,6 +9,19 @@ namespace Game.Infrastructure.Tests;
 
 public class QuestionCatalogExpansionTests
 {
+    private static readonly string[] AllThemes =
+    [
+        "Harry Potter",
+        "Naruto",
+        "História do Brasil",
+        "Geografia",
+        "Atualidades",
+        "Filmes da Disney",
+        "Biologia",
+        "Artes",
+        "Cinema"
+    ];
+
     private static readonly string[] ExpansionThemes = ["Biologia", "Artes", "Cinema"];
 
     private static IReadOnlyList<Game.Domain.Entities.Question> ExpansionQuestions =>
@@ -17,20 +30,23 @@ public class QuestionCatalogExpansionTests
             .ToList();
 
     [Fact]
-    public void Expansion_has_expected_theme_and_level_distribution()
+    public void Catalog_has_five_more_accessible_questions_in_every_theme()
     {
-        var questions = ExpansionQuestions;
+        var questions = QuestionSeedData.GetQuestions();
 
-        Assert.Equal(60, questions.Count);
+        Assert.Equal(165, questions.Count);
 
-        foreach (var theme in ExpansionThemes)
+        foreach (var theme in AllThemes)
         {
             var themeQuestions = questions.Where(question => question.Theme == theme).ToList();
-            Assert.Equal(20, themeQuestions.Count);
+            var isExpansionTheme = ExpansionThemes.Contains(theme, StringComparer.Ordinal);
 
-            foreach (var level in Enumerable.Range(1, 4))
+            Assert.Equal(isExpansionTheme ? 25 : 15, themeQuestions.Count);
+            Assert.Equal(isExpansionTheme ? 10 : 15, themeQuestions.Count(question => question.Level == 1));
+
+            foreach (var level in Enumerable.Range(2, 3))
             {
-                Assert.Equal(5, themeQuestions.Count(question => question.Level == level));
+                Assert.Equal(isExpansionTheme ? 5 : 0, themeQuestions.Count(question => question.Level == level));
             }
         }
     }
@@ -49,9 +65,29 @@ public class QuestionCatalogExpansionTests
             Assert.InRange(question.Level, 1, 4);
         });
 
-        foreach (var answerIndex in Enumerable.Range(0, 4))
+        var expectedAnswerCounts = new[] {19, 18, 19, 19};
+        foreach (var answerIndex in Enumerable.Range(0, expectedAnswerCounts.Length))
         {
-            Assert.Equal(15, questions.Count(question => question.CorrectAnswerIndex == answerIndex));
+            Assert.Equal(
+                expectedAnswerCounts[answerIndex],
+                questions.Count(question => question.CorrectAnswerIndex == answerIndex));
+        }
+    }
+
+    [Fact]
+    public void Difficulty_replacements_cover_all_new_questions_without_leaving_superseded_texts()
+    {
+        var replacements = QuestionSeedData.GetAccessibleQuestionReplacements();
+        var catalog = QuestionSeedData.GetQuestions();
+        var catalogTexts = catalog.Select(question => question.Text).ToHashSet(StringComparer.Ordinal);
+
+        Assert.Equal(45, replacements.Count);
+        Assert.All(replacements.Keys, text => Assert.DoesNotContain(text, catalogTexts));
+        Assert.Equal(45, replacements.Values.Select(question => question.Text).Distinct(StringComparer.Ordinal).Count());
+
+        foreach (var theme in AllThemes)
+        {
+            Assert.Equal(5, replacements.Values.Count(question => question.Theme == theme));
         }
     }
 
@@ -83,7 +119,27 @@ public class QuestionCatalogExpansionTests
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
-        dbContext.Questions.Add(existingQuestion);
+        const string supersededText = "Qual é o formato da cicatriz de Harry Potter?";
+        var replacement = QuestionSeedData.GetAccessibleQuestionReplacements()[supersededText];
+        var supersededQuestion = new QuestionEntity
+        {
+            Id = 501,
+            Text = supersededText,
+            Theme = "Harry Potter",
+            Level = 1,
+            Active = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            Options = Enumerable.Range(0, 4).Select(index => new QuestionOptionEntity
+            {
+                Id = Guid.NewGuid(),
+                QuestionId = 501,
+                OptionIndex = index,
+                Text = $"Alternativa antiga {index}",
+                IsCorrect = index == 0
+            }).ToList()
+        };
+        dbContext.Questions.AddRange(existingQuestion, supersededQuestion);
         await dbContext.SaveChangesAsync();
 
         await QuestionSeeder.SeedAsync(dbContext);
@@ -99,13 +155,21 @@ public class QuestionCatalogExpansionTests
             question.Id == existingQuestion.Id &&
             question.Text == existingQuestion.Text &&
             !question.Active);
+        Assert.DoesNotContain(persistedQuestions, question => question.Text == supersededText);
+        Assert.Contains(persistedQuestions, question =>
+            question.Id == supersededQuestion.Id &&
+            question.Text == replacement.Text &&
+            question.Options.OrderBy(option => option.OptionIndex)
+                .Select(option => option.Text)
+                .SequenceEqual(replacement.Options) &&
+            question.Options.Single(option => option.IsCorrect).OptionIndex == replacement.CorrectAnswerIndex);
 
         var expansionTexts = ExpansionQuestions.Select(question => question.Text).ToHashSet(StringComparer.Ordinal);
         var persistedExpansion = persistedQuestions
             .Where(question => expansionTexts.Contains(question.Text))
             .ToList();
 
-        Assert.Equal(60, persistedExpansion.Count);
+        Assert.Equal(75, persistedExpansion.Count);
         Assert.All(persistedExpansion, question =>
         {
             Assert.True(question.Active);

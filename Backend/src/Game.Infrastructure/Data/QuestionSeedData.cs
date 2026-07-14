@@ -168,7 +168,73 @@ public static class QuestionSeedData
             ("Quem dirigiu o documentário experimental Um Homem com uma Câmera, de 1929?", new[] {"Sergei Eisenstein", "Dziga Vertov", "Vsevolod Pudovkin", "Aleksandr Dovjenko"}, 1, 4, "Cinema"),
         };
 
-        return legacyRaw.Concat(expansionRaw).Select((q, index) => new Question
+        var accessibleExpansionRaw = new (string Text, string[] Options, int Answer, int Level, string Theme)[]
+        {
+            // Harry Potter — dificuldade aproximada 4/10
+            ("Qual animal representa o Patrono de Harry Potter?", new[] {"Cervo", "Lobo", "Coruja", "Cavalo"}, 0, 1, "Harry Potter"),
+            ("Qual personagem é conhecido como Almofadinhas no Mapa do Maroto?", new[] {"Remo Lupin", "Sirius Black", "Tiago Potter", "Pedro Pettigrew"}, 1, 1, "Harry Potter"),
+            ("Qual Horcrux Harry destrói na Câmara Secreta?", new[] {"O medalhão de Sonserina", "A taça de Lufa-Lufa", "O diário de Tom Riddle", "O anel de Servolo Gaunt"}, 2, 1, "Harry Potter"),
+            ("A qual casa de Hogwarts pertence Luna Lovegood?", new[] {"Grifinória", "Sonserina", "Lufa-Lufa", "Corvinal"}, 3, 1, "Harry Potter"),
+            ("Em qual posição Harry joga no time de Quadribol da Grifinória?", new[] {"Apanhador", "Goleiro", "Batedor", "Artilheiro"}, 0, 1, "Harry Potter"),
+
+            // Naruto — dificuldade aproximada 4/10
+            ("Em qual estilo de luta Rock Lee se especializa?", new[] {"Genjutsu", "Taijutsu", "Ninjutsu médico", "Senjutsu"}, 1, 1, "Naruto"),
+            ("De qual aldeia Gaara se torna Kazekage?", new[] {"Aldeia da Névoa", "Aldeia da Pedra", "Aldeia da Areia", "Aldeia da Nuvem"}, 2, 1, "Naruto"),
+            ("Qual clã é conhecido pela habilidade visual Byakugan?", new[] {"Uchiha", "Nara", "Aburame", "Hyuga"}, 3, 1, "Naruto"),
+            ("Quem se torna a Quinta Hokage?", new[] {"Tsunade", "Kakashi", "Jiraiya", "Danzo"}, 0, 1, "Naruto"),
+            ("Qual destes ninjas fazia parte do Time 10 liderado por Asuma?", new[] {"Kiba", "Shikamaru", "Neji", "Sasuke"}, 1, 1, "Naruto"),
+
+            // História do Brasil — dificuldade aproximada 4/10
+            ("Qual movimento ocorrido na Bahia em 1798 também ficou conhecido como Revolta dos Alfaiates?", new[] {"Revolta da Chibata", "Guerra de Canudos", "Conjuração Baiana", "Sabinada"}, 2, 1, "História do Brasil"),
+            ("Em qual ano foi promulgada a Constituição brasileira conhecida como Constituição Cidadã?", new[] {"1964", "1979", "1985", "1988"}, 3, 1, "História do Brasil"),
+            ("Qual foi a primeira capital do Brasil?", new[] {"Salvador", "Rio de Janeiro", "São Vicente", "Brasília"}, 0, 1, "História do Brasil"),
+            ("Qual presidente transferiu a capital federal para Brasília?", new[] {"Getúlio Vargas", "Juscelino Kubitschek", "Jânio Quadros", "João Goulart"}, 1, 1, "História do Brasil"),
+            ("Quem governava o Brasil durante a maior parte do período chamado Estado Novo?", new[] {"Eurico Gaspar Dutra", "Juscelino Kubitschek", "Getúlio Vargas", "Washington Luís"}, 2, 1, "História do Brasil"),
+
+            // Geografia — dificuldade aproximada 4/10
+            ("Qual é a capital do Canadá?", new[] {"Toronto", "Vancouver", "Montreal", "Ottawa"}, 3, 1, "Geografia"),
+            ("Qual destes estados brasileiros não possui litoral?", new[] {"Minas Gerais", "Espírito Santo", "Pernambuco", "Santa Catarina"}, 0, 1, "Geografia"),
+            ("Qual é a maior região brasileira em extensão territorial?", new[] {"Centro-Oeste", "Norte", "Nordeste", "Sudeste"}, 1, 1, "Geografia"),
+            ("Em qual continente se localiza a Cordilheira dos Andes?", new[] {"América do Norte", "Ásia", "América do Sul", "Europa"}, 2, 1, "Geografia"),
+            ("Em qual mar deságua o rio Danúbio?", new[] {"Mar Báltico", "Mar Cáspio", "Mar Mediterrâneo", "Mar Negro"}, 3, 1, "Geografia"),
+
+            // Atualidades — dificuldade aproximada 4/10
+            ("Qual é o nome adotado pela rede social anteriormente chamada Twitter?", new[] {"X", "Threads", "Bluesky", "Mastodon"}, 0, 1, "Atualidades"),
+            ("Em qual cidade foi realizada a conferência climática COP28, em 2023?", new[] {"Doha", "Dubai", "Cairo", "Riad"}, 1, 1, "Atualidades"),
+            ("Qual seleção venceu a Copa do Mundo de futebol feminino de 2023?", new[] {"Inglaterra", "Estados Unidos", "Espanha", "Alemanha"}, 2, 1, "Atualidades"),
+            ("Qual organização declarou, em 2023, o fim da emergência de saúde pública internacional causada pela COVID-19?", new[] {"Unesco", "Unicef", "Cruz Vermelha", "OMS"}, 3, 1, "Atualidades"),
+            ("Qual filme venceu o Oscar de melhor filme na cerimônia de 2024?", new[] {"Oppenheimer", "Barbie", "Pobres Criaturas", "Anatomia de uma Queda"}, 0, 1, "Atualidades"),
+
+            // Filmes da Disney — dificuldade aproximada 4/10
+            ("Qual é o sobrenome da família protagonista de Encanto?", new[] {"Rivera", "Madrigal", "Andersen", "Montoya"}, 1, 1, "Filmes da Disney"),
+            ("Qual vilã rouba a voz de Ariel em A Pequena Sereia?", new[] {"Malévola", "Cruella", "Úrsula", "Rainha Má"}, 2, 1, "Filmes da Disney"),
+            ("Qual instrumento Miguel deseja tocar em Viva — A Vida é uma Festa?", new[] {"Piano", "Violino", "Trompete", "Violão"}, 3, 1, "Filmes da Disney"),
+            ("Em qual cidade se passa A Princesa e o Sapo?", new[] {"Nova Orleans", "Nova York", "Chicago", "Boston"}, 0, 1, "Filmes da Disney"),
+            ("Em Divertida Mente, qual emoção é representada pela cor azul?", new[] {"Alegria", "Tristeza", "Raiva", "Medo"}, 1, 1, "Filmes da Disney"),
+
+            // Biologia — dificuldade aproximada 4/10
+            ("Em qual organela das células vegetais ocorre a fotossíntese?", new[] {"Núcleo", "Ribossomo", "Cloroplasto", "Lisossomo"}, 2, 1, "Biologia"),
+            ("Quais células do sangue transportam a maior parte do oxigênio pelo corpo?", new[] {"Plaquetas", "Linfócitos", "Neutrófilos", "Hemácias"}, 3, 1, "Biologia"),
+            ("A qual grupo pertencem animais como sapos, rãs e salamandras?", new[] {"Anfíbios", "Répteis", "Mamíferos", "Aracnídeos"}, 0, 1, "Biologia"),
+            ("Como se chama a divisão celular que origina duas células geneticamente semelhantes?", new[] {"Meiose", "Mitose", "Fecundação", "Mutação"}, 1, 1, "Biologia"),
+            ("Qual vitamina pode ser produzida pela pele com a exposição adequada à luz solar?", new[] {"Vitamina A", "Vitamina C", "Vitamina D", "Vitamina K"}, 2, 1, "Biologia"),
+
+            // Artes — dificuldade aproximada 4/10
+            ("A qual movimento artístico Salvador Dalí é associado?", new[] {"Cubismo", "Impressionismo", "Expressionismo", "Surrealismo"}, 3, 1, "Artes"),
+            ("Qual artista e paisagista criou o desenho do calçadão de Copacabana?", new[] {"Roberto Burle Marx", "Candido Portinari", "Di Cavalcanti", "Victor Brecheret"}, 0, 1, "Artes"),
+            ("Quem pintou a obra O Grito?", new[] {"Gustav Klimt", "Edvard Munch", "Paul Cézanne", "Henri Matisse"}, 1, 1, "Artes"),
+            ("Qual técnica de pintura forma imagens por meio de pequenos pontos de cor?", new[] {"Afresco", "Aquarela", "Pontilhismo", "Gravura"}, 2, 1, "Artes"),
+            ("Em qual cidade está localizado o Museu do Louvre?", new[] {"Londres", "Florença", "Madri", "Paris"}, 3, 1, "Artes"),
+
+            // Cinema — dificuldade aproximada 4/10
+            ("Quem dirigiu Titanic e Avatar?", new[] {"James Cameron", "Ridley Scott", "Peter Jackson", "Christopher Nolan"}, 0, 1, "Cinema"),
+            ("Em qual filme a palavra Rosebud é um elemento central da história?", new[] {"Casablanca", "Cidadão Kane", "Psicose", "O Poderoso Chefão"}, 1, 1, "Cinema"),
+            ("Qual filme brasileiro concorreu ao Oscar de melhor filme estrangeiro em 1999?", new[] {"Cidade de Deus", "O Quatrilho", "Central do Brasil", "Tropa de Elite"}, 2, 1, "Cinema"),
+            ("Qual gênero ficou especialmente associado aos filmes do diretor Sergio Leone?", new[] {"Musical", "Ficção científica", "Terror psicológico", "Faroeste espaguete"}, 3, 1, "Cinema"),
+            ("Qual ator interpreta Neo na série Matrix?", new[] {"Keanu Reeves", "Tom Cruise", "Brad Pitt", "Matt Damon"}, 0, 1, "Cinema"),
+        };
+
+        return legacyRaw.Concat(expansionRaw).Concat(accessibleExpansionRaw).Select((q, index) => new Question
         {
             Id = index,
             Text = q.Text,
@@ -177,5 +243,63 @@ public static class QuestionSeedData
             Level = q.Level,
             Theme = q.Theme
         }).ToList();
+    }
+
+    public static IReadOnlyDictionary<string, Question> GetAccessibleQuestionReplacements()
+    {
+        string[] supersededTexts =
+        [
+            "Qual é o formato da cicatriz de Harry Potter?",
+            "Em qual plataforma Harry embarca no Expresso de Hogwarts?",
+            "Qual esporte é jogado sobre vassouras no mundo de Harry Potter?",
+            "Qual é o sobrenome de Rony, amigo de Harry Potter?",
+            "Quem é o principal vilão da série Harry Potter?",
+            "Em qual aldeia Naruto vive?",
+            "Qual é a comida favorita de Naruto?",
+            "Qual símbolo aparece na bandana de Naruto?",
+            "Qual é a cor do cabelo de Naruto?",
+            "Qual destas personagens faz parte do Time 7 com Naruto?",
+            "Qual é o idioma oficial do Brasil?",
+            "Em qual dia é comemorada a Independência do Brasil?",
+            "O que a Lei Áurea aboliu no Brasil?",
+            "Qual cidade passou a ser a capital do Brasil em 1960?",
+            "Quem comandava a frota portuguesa que chegou ao Brasil em 1500?",
+            "Em qual continente fica o Brasil?",
+            "Qual é a capital da França?",
+            "Qual é o maior país do mundo em extensão territorial?",
+            "Qual linha imaginária divide a Terra em hemisférios Norte e Sul?",
+            "Qual é a montanha mais alta do mundo acima do nível do mar?",
+            "Qual cidade sediou os Jogos Olímpicos de 2024?",
+            "Qual seleção venceu a Copa do Mundo de futebol masculino de 2022?",
+            "Qual cidade brasileira sediou a conferência climática COP30 em 2025?",
+            "Qual destes é um assistente de inteligência artificial criado pela OpenAI?",
+            "Qual é o nome do sistema brasileiro de pagamentos instantâneos?",
+            "Que tipo de animal é Mickey?",
+            "Qual princesa perde um sapatinho de cristal?",
+            "Que tipo de animal é Nemo em Procurando Nemo?",
+            "Quantos anões vivem com Branca de Neve?",
+            "Em Moana, qual elemento da natureza a protagonista atravessa em sua viagem?",
+            "Qual gás do ar é essencial para a respiração humana?",
+            "Qual pigmento dá a cor verde à maioria das plantas?",
+            "Qual é o maior órgão do corpo humano?",
+            "Como são chamados os animais que possuem coluna vertebral?",
+            "Qual alimento os mamíferos produzem para seus filhotes?",
+            "Qual instrumento é usado normalmente para aplicar tinta em uma tela?",
+            "Na mistura tradicional de tintas, qual cor resulta de vermelho com amarelo?",
+            "Quem pintou A Noite Estrelada?",
+            "Qual arte costuma apresentar atores em um palco?",
+            "Qual material macio pode ser moldado para criar esculturas?",
+            "Como se chama o lugar onde o público assiste a filmes em uma tela grande?",
+            "Como é chamado o profissional que interpreta um personagem em um filme?",
+            "Quais animais são a principal atração dos filmes Jurassic Park?",
+            "Em Titanic, em qual meio de transporte os protagonistas viajam?",
+            "Qual prêmio é famoso por homenagear filmes e profissionais do cinema?"
+        ];
+
+        var replacements = GetQuestions().TakeLast(supersededTexts.Length).ToArray();
+
+        return supersededTexts
+            .Select((text, index) => new { text, Replacement = replacements[index] })
+            .ToDictionary(item => item.text, item => item.Replacement, StringComparer.Ordinal);
     }
 }
