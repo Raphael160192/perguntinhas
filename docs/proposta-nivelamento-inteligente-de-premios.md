@@ -1,7 +1,8 @@
 # Proposta: nivelamento inteligente dos prêmios
 
 > Proposta de produto e arquitetura **implementada atrás de feature flag** em
-> 13/07/2026. A seleção inteligente permanece desligada por padrão até o rollout.
+> 13/07/2026. A seleção inteligente é o comportamento padrão do backend; a flag
+> pode ser desligada explicitamente para rollback.
 > O escopo deste documento é exclusivamente a coerência das combinações, o
 > nivelamento progressivo, a relação com as roupas e a variedade dos prêmios.
 >
@@ -10,7 +11,7 @@
 
 ## 1. Problema atual
 
-O gerador legado, mantido para rollback enquanto a flag estiver desligada,
+O gerador legado, mantido exclusivamente para rollback quando a flag for desligada,
 sorteia ação, local e duração de forma totalmente independente.
 Isso cria 360 combinações matematicamente válidas, mas não necessariamente
 coerentes ou agradáveis. “Mordida no nariz” é um bom exemplo: os três componentes

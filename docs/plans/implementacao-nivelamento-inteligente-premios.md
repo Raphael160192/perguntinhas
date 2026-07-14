@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Implementado e validado; ativação pendente por feature flag |
+| Status | Implementado, validado e ativo por padrão |
 | Tipo | Plano técnico e de entrega |
 | Documento de produto | [`proposta-nivelamento-inteligente-de-premios.md`](../proposta-nivelamento-inteligente-de-premios.md) |
 | Backend atual | .NET 8, ASP.NET Core, EF Core 8 e PostgreSQL |
@@ -20,12 +20,11 @@ otimista, histórico estruturado, prêmio terminal e retomada do resultado no
 frontend. A migration foi gerada e o SQL validado, mas não foi aplicada ao
 banco por esta implementação.
 
-A seleção inteligente permanece desligada por padrão. A ativação controlada é
-feita com `Rewards__IntelligentSelectionEnabled=true`, depois da aplicação da
-migration e da validação do ambiente. O provider cartesiano legado continua
-disponível para rollback enquanto a flag estiver desligada.
+A seleção inteligente é o comportamento padrão. O provider cartesiano legado
+continua disponível apenas para rollback explícito com
+`Rewards__IntelligentSelectionEnabled=false`.
 
-A validação automatizada atual possui 20 testes cobrindo cálculo de nível,
+A validação automatizada atual possui 21 testes cobrindo cálculo de nível,
 requisitos de roupa, distribuição determinística, filtros, fallback, catálogo,
 idempotência, avanço de rodada e compatibilidade de retomada do prêmio legado.
 
@@ -132,7 +131,7 @@ Adicionar:
 ```json
 {
   "Rewards": {
-    "IntelligentSelectionEnabled": false,
+    "IntelligentSelectionEnabled": true,
     "CatalogResource": "reward-templates.v1.json"
   }
 }
@@ -765,7 +764,7 @@ Saída: seletor isolado funcional.
 - manter legado;
 - testar local, remoto e terminal.
 
-Saída: backend pronto com flag desligada.
+Saída: backend pronto com seleção inteligente ativa e rollback configurável.
 
 ### P5 — Frontend
 
@@ -908,14 +907,12 @@ Não coletar avaliação ou preferência nesta entrega.
 ### 17.1 Deploy
 
 1. aplicar migration aditiva;
-2. backend com flag desligada;
-3. validar catálogo em staging;
-4. frontend compatível com novo e legado;
-5. habilitar em staging;
-6. simulação, QA local/remoto e revisão;
-7. habilitar em produção;
-8. monitorar;
-9. manter provider legado por uma versão estável.
+2. validar catálogo em staging;
+3. frontend compatível com novo e legado;
+4. executar simulação, QA local/remoto e revisão;
+5. publicar o backend com seleção inteligente ativa;
+6. monitorar;
+7. manter provider legado por uma versão estável como rollback explícito.
 
 ### 17.2 Rollback
 

@@ -7,6 +7,14 @@ namespace Game.Infrastructure.Tests;
 public class JsonRewardCatalogTests
 {
     [Fact]
+    public void RewardsOptions_DefaultsToIntelligentSelection()
+    {
+        var options = new RewardsOptions();
+
+        Assert.True(options.IntelligentSelectionEnabled);
+    }
+
+    [Fact]
     public void Catalog_LoadsAndHasRequiredCoverage()
     {
         var catalog = new JsonRewardCatalog("reward-templates.v1.json");

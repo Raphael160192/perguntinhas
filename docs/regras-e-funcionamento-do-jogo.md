@@ -169,8 +169,8 @@ partida”.
 ## 4. Prêmios
 
 > A mecânica progressiva está implementada atrás da flag
-> `Rewards:IntelligentSelectionEnabled`. Ela permanece `false` por padrão até o
-> rollout. A especificação completa está na
+> `Rewards:IntelligentSelectionEnabled`. Ela permanece `true` por padrão; o valor
+> `false` existe somente para rollback explícito. A especificação completa está na
 > [`proposta de nivelamento inteligente dos prêmios`](proposta-nivelamento-inteligente-de-premios.md).
 
 ### 4.1 Quando e para quem um prêmio é gerado

@@ -67,3 +67,8 @@ postgres_data/
 *~
 .DS_Store
 Thumbs.db
+
+# ================================
+# Documentação local
+# ================================
+docs/
