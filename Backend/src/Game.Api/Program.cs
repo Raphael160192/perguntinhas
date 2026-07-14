@@ -8,8 +8,18 @@ using Game.Infrastructure.Repositories;
 using Game.Infrastructure.Rewards;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using Serilog;
+using Serilog.Formatting.Compact;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Logs estruturados: JSON compacto por linha no console (capturado pelo log
+// stream da Render). Níveis configuráveis pela seção "Serilog" do appsettings.
+builder.Host.UseSerilog((context, config) =>
+    config
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.FromLogContext()
+        .WriteTo.Console(new CompactJsonFormatter()));
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -117,6 +127,9 @@ app.UseExceptionHandler(errorApp =>
         await context.Response.WriteAsJsonAsync(new { message = "Erro interno no servidor. Tente novamente." });
     });
 });
+
+// Uma linha estruturada por request (método, rota, status, duração).
+app.UseSerilogRequestLogging();
 
 app.UseCors("AllowFrontend");
 

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Game.Application.Repositories;
 using Game.Domain.Entities;
 using Game.Infrastructure.Persistence;
@@ -72,6 +73,27 @@ public class PostgresGameActivityLog : IGameActivityLog
         catch (Exception ex)
         {
             _logger.LogError(ex, "Falha ao registrar prêmio da partida {GameId}.", gameSessionId);
+        }
+    }
+
+    public async Task RecordEventAsync(Guid gameSessionId, Guid? playerId, string eventType, object? payload = null)
+    {
+        try
+        {
+            _dbContext.GameEvents.Add(new GameEventEntity
+            {
+                GameSessionId = gameSessionId,
+                PlayerId = playerId,
+                EventType = eventType,
+                PayloadJson = payload is null ? "{}" : JsonSerializer.Serialize(payload),
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await _dbContext.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao registrar evento {EventType} da partida {GameId}.", eventType, gameSessionId);
         }
     }
 }

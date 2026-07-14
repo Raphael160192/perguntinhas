@@ -206,6 +206,16 @@ public class GameServiceRoundFlowTests
             RewardCount++;
             return Task.CompletedTask;
         }
+
+        public Task RecordEventAsync(Guid gameSessionId, Guid? playerId, string eventType, object? payload = null)
+        {
+            EventCount++;
+            EventTypes.Add(eventType);
+            return Task.CompletedTask;
+        }
+
+        public int EventCount { get; private set; }
+        public List<string> EventTypes { get; } = new();
     }
 
     private sealed class LegacyLikeRewardSelector : IRewardSelector

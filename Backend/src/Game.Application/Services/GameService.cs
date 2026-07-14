@@ -42,6 +42,12 @@ public class GameService : IGameService
 
         await _sessionRepository.AddAsync(session);
 
+        await _activityLog.RecordEventAsync(session.Id, null, GameEventTypes.GameCreated, new
+        {
+            mode = session.Mode.ToString(),
+            playerNames = session.Players.Select(p => p.Name).ToArray()
+        });
+
         return new CreateGameResultDto
         {
             GameId = session.Id,
@@ -66,6 +72,13 @@ public class GameService : IGameService
         };
 
         await _sessionRepository.AddAsync(session);
+
+        await _activityLog.RecordEventAsync(session.Id, session.Players[0].Id, GameEventTypes.GameCreated, new
+        {
+            mode = session.Mode.ToString(),
+            joinCode = session.JoinCode,
+            playerNames = session.Players.Select(p => p.Name).ToArray()
+        });
 
         return new CreateRemoteGameResultDto
         {
@@ -116,6 +129,12 @@ public class GameService : IGameService
         session.Status = GameStatus.InProgress;
 
         await _sessionRepository.UpdateAsync(session);
+
+        // Só o join novo gera evento — o rejoin retorna antes deste ponto.
+        await _activityLog.RecordEventAsync(session.Id, player2.Id, GameEventTypes.PlayerJoined, new
+        {
+            playerName = player2.Name
+        });
 
         return new JoinGameResultDto
         {
@@ -206,12 +225,34 @@ public class GameService : IGameService
         await _sessionRepository.UpdateAsync(session);
 
         // Histórico para análise (append-only; falha não interrompe a jogada).
+        // O retorno antecipado do replay idempotente garante que estes registros
+        // aconteçam uma única vez por rodada.
         await _activityLog.RecordAnswerAsync(
             session.Id, outcome.CurrentPlayer.Id, question.Id, request.SelectedOptionIndex, isCorrect);
 
         if (reward is not null)
         {
             await _activityLog.RecordRewardAsync(session.Id, outcome.CurrentPlayer.Id, reward);
+        }
+
+        if (outcome.LostClothing is not null)
+        {
+            await _activityLog.RecordEventAsync(session.Id, outcome.PunishedPlayer.Id, GameEventTypes.ClothingLost, new
+            {
+                clothing = outcome.LostClothing.ToString(),
+                score = outcome.PunishedPlayer.Score,
+                roundNumber = session.RoundNumber
+            });
+        }
+
+        if (outcome.IsGameOver)
+        {
+            await _activityLog.RecordEventAsync(session.Id, outcome.Winner?.Id, GameEventTypes.GameFinished, new
+            {
+                winnerName = outcome.Winner?.Name,
+                loserScore = outcome.PunishedPlayer.Score,
+                roundNumber = session.RoundNumber
+            });
         }
 
         return new SubmitAnswerServiceResult
@@ -281,6 +322,8 @@ public class GameService : IGameService
         session.FinishedAt = null;
 
         await _sessionRepository.UpdateAsync(session);
+
+        await _activityLog.RecordEventAsync(session.Id, null, GameEventTypes.GameRestarted);
 
         return await ToStateDtoAsync(session);
     }

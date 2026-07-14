@@ -1,7 +1,10 @@
 # Plano: persistência completa no PostgreSQL + logs e auditoria
 
-> **Status:** Fases 1 e 2 implementadas (migration `PersistGameSessions` +
-> `PostgresGameSessionRepository`). Fases 3 e 4 pendentes.
+> **Status:** Fases 1–4 implementadas. Fase 1+2: migration `PersistGameSessions` +
+> `PostgresGameSessionRepository`. Fase 3: `IGameActivityLog` (game_answers + rewards).
+> Fase 4: Serilog (JSON no console + request logging) + tabela `game_events`
+> (migration `AddGameEvents`) com eventos GameCreated/PlayerJoined/ClothingLost/
+> GameFinished/GameRestarted. Pendente: fase 5 (usuários e retenção).
 
 ## Contexto
 
