@@ -18,3 +18,8 @@ public class NextRoundRequest
 {
     public Guid? PlayerId { get; set; }
 }
+
+public class AbandonGameRequest
+{
+    public Guid? PlayerId { get; set; }
+}

@@ -12,4 +12,5 @@ public interface IGameService
     Task<SubmitAnswerServiceResult?> SubmitAnswerAsync(Guid gameId, AnswerRequestDto request);
     Task<GameStateDto?> NextRoundAsync(Guid gameId, Guid? playerId = null);
     Task<GameStateDto?> RestartAsync(Guid gameId);
+    Task<AbandonGameResultDto?> AbandonAsync(Guid gameId, Guid? playerId = null);
 }

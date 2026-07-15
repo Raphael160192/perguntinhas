@@ -59,6 +59,14 @@ public class JoinGameRequestDto
     public Guid? PlayerId { get; set; }
 }
 
+public class AbandonGameResultDto
+{
+    // Nome de quem encerrou (exibido no aviso do outro aparelho).
+    public string? AbandonedByName { get; set; }
+
+    public GameStateDto State { get; set; } = null!;
+}
+
 public class JoinGameResultDto
 {
     public Guid GameId { get; set; }

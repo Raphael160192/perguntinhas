@@ -1,6 +1,7 @@
 import type { GameState } from "../types/game";
 import { TurnHeader } from "./TurnHeader";
 import { OptionCard } from "./OptionCard";
+import { GameMenu } from "./GameMenu";
 
 export interface QuestionScreenProps {
   state: GameState;
@@ -10,6 +11,8 @@ export interface QuestionScreenProps {
   interactive: boolean;
   onSelect: (index: number) => void;
   onConfirm: () => void;
+  onRestart: () => void;
+  onAbandon: () => void;
 }
 
 export function QuestionScreen({
@@ -18,7 +21,9 @@ export function QuestionScreen({
   loading,
   interactive,
   onSelect,
-  onConfirm
+  onConfirm,
+  onRestart,
+  onAbandon
 }: QuestionScreenProps) {
   const question = state.currentQuestion;
   if (!question) {
@@ -44,7 +49,10 @@ export function QuestionScreen({
         <div className="theme-pill">
           {question.theme} · Nível {question.level}
         </div>
-        <div className="round-counter">RODADA {state.roundNumber}</div>
+        <div className="theme-row__right">
+          <div className="round-counter">RODADA {state.roundNumber}</div>
+          <GameMenu onRestart={onRestart} onAbandon={onAbandon} loading={loading} />
+        </div>
       </div>
 
       <div className="question-text">{question.text}</div>

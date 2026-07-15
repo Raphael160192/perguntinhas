@@ -52,7 +52,7 @@ export interface PendingRoundResult {
 
 export interface GameState {
   gameId: string;
-  status: "WaitingForOpponent" | "InProgress" | "Finished";
+  status: "WaitingForOpponent" | "InProgress" | "Finished" | "Abandoned";
   mode: "Local" | "Remote";
   joinCode: string | null;
   currentPlayerIndex: number;
@@ -77,6 +77,11 @@ export interface JoinGameResult {
   gameId: string;
   playerId: string;
   rejoined: boolean;
+  state: GameState;
+}
+
+export interface AbandonGameResult {
+  abandonedByName: string | null;
   state: GameState;
 }
 

@@ -5,11 +5,13 @@ export interface RemoteCreateProps {
   joinCode: string | null;
   onCreate: (playerName: string) => void;
   onBack: () => void;
+  // Cancela a sala já criada (abandona no backend) enquanto aguarda o parceiro.
+  onCancelRoom: () => void;
   loading: boolean;
   error: string | null;
 }
 
-export function RemoteCreate({ joinCode, onCreate, onBack, loading, error }: RemoteCreateProps) {
+export function RemoteCreate({ joinCode, onCreate, onBack, onCancelRoom, loading, error }: RemoteCreateProps) {
   const [name, setName] = useState("");
 
   if (joinCode) {
@@ -25,6 +27,14 @@ export function RemoteCreate({ joinCode, onCreate, onBack, loading, error }: Rem
             Fale esse código para a outra pessoa entrar no aparelho dela.
           </div>
           <div className="waiting-dots">aguardando o outro jogador…</div>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={onCancelRoom}
+            disabled={loading}
+          >
+            Cancelar sala
+          </button>
         </div>
       </div>
     );

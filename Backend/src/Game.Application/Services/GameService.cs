@@ -328,6 +328,48 @@ public class GameService : IGameService
         return await ToStateDtoAsync(session);
     }
 
+    // Encerra a partida para os dois jogadores. Qualquer jogador pode encerrar
+    // a qualquer momento (sem validação de vez); a chamada é idempotente.
+    public async Task<AbandonGameResultDto?> AbandonAsync(Guid gameId, Guid? playerId = null)
+    {
+        var session = await _sessionRepository.GetAsync(gameId);
+        if (session is null)
+        {
+            return null;
+        }
+
+        var abandonedBy = playerId.HasValue
+            ? session.Players.FirstOrDefault(p => p.Id == playerId.Value)
+            : null;
+
+        if (session.Status is GameStatus.Finished or GameStatus.Abandoned)
+        {
+            return new AbandonGameResultDto
+            {
+                AbandonedByName = abandonedBy?.Name,
+                State = await ToStateDtoAsync(session)
+            };
+        }
+
+        session.Status = GameStatus.Abandoned;
+        session.FinishedAt = DateTime.UtcNow;
+        session.PendingRoundResult = null;
+
+        await _sessionRepository.UpdateAsync(session);
+
+        await _activityLog.RecordEventAsync(session.Id, abandonedBy?.Id, GameEventTypes.GameAbandoned, new
+        {
+            playerName = abandonedBy?.Name,
+            roundNumber = session.RoundNumber
+        });
+
+        return new AbandonGameResultDto
+        {
+            AbandonedByName = abandonedBy?.Name,
+            State = await ToStateDtoAsync(session)
+        };
+    }
+
     // Em partidas remotas, apenas o jogador da vez pode responder/avançar.
     // Partidas locais (um aparelho) não enviam playerId e não são validadas.
     private static void EnsureIsCurrentPlayer(GameSession session, Guid? playerId)

@@ -170,6 +170,33 @@ public class GamesController : ControllerBase
         }
     }
 
+    [HttpPost("{gameId}/abandon")]
+    public async Task<ActionResult<AbandonGameResultDto>> Abandon(Guid gameId, [FromBody] AbandonGameRequest? request = null)
+    {
+        try
+        {
+            var result = await _gameService.AbandonAsync(gameId, request?.PlayerId);
+
+            if (result is null)
+            {
+                return NotFound();
+            }
+
+            // Avisa o outro aparelho que a partida foi encerrada.
+            await BroadcastAsync(gameId, "GameAbandoned", new
+            {
+                state = result.State,
+                abandonedByName = result.AbandonedByName
+            });
+
+            return Ok(result);
+        }
+        catch (GameRuleException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+    }
+
     private Task BroadcastAsync(Guid gameId, string eventName, object payload)
     {
         return _gameHub.Clients.Group(gameId.ToString()).SendAsync(eventName, payload);

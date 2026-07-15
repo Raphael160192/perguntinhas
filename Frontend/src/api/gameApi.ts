@@ -2,6 +2,7 @@
 // Nenhum componente deve montar URLs ou fazer fetch diretamente.
 
 import type {
+  AbandonGameResult,
   AnswerResult,
   CreateGameResult,
   CreateRemoteGameResult,
@@ -73,4 +74,8 @@ export function nextRound(gameId: string, playerId?: string): Promise<GameState>
 
 export function restartGame(gameId: string): Promise<GameState> {
   return request<GameState>(`/${gameId}/restart`, "POST");
+}
+
+export function abandonGame(gameId: string, playerId?: string): Promise<AbandonGameResult> {
+  return request<AbandonGameResult>(`/${gameId}/abandon`, "POST", { playerId });
 }

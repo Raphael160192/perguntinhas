@@ -3,6 +3,9 @@ export interface HomeScreenProps {
   onRemoteCreate: () => void;
   onRemoteJoin: () => void;
 
+  // Aviso informativo (ex: "Fulano encerrou a partida").
+  notice?: string | null;
+
   // Sessão salva no aparelho: oferece voltar à partida em andamento.
   resumeAvailable: boolean;
   resumeJoinCode: string | null;
@@ -15,6 +18,7 @@ export function HomeScreen({
   onLocal,
   onRemoteCreate,
   onRemoteJoin,
+  notice = null,
   resumeAvailable,
   resumeJoinCode,
   onResume,
@@ -30,6 +34,12 @@ export function HomeScreen({
           No mesmo aparelho, passando o celular de mão em mão — ou cada um no seu, com as telas
           sincronizadas.
         </div>
+
+        {notice && (
+          <div className="resume-banner">
+            <div className="resume-banner__text">{notice}</div>
+          </div>
+        )}
 
         {resumeAvailable && (
           <div className="resume-banner">

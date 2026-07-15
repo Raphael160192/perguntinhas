@@ -8,4 +8,5 @@ public static class GameEventTypes
     public const string ClothingLost = "ClothingLost";
     public const string GameFinished = "GameFinished";
     public const string GameRestarted = "GameRestarted";
+    public const string GameAbandoned = "GameAbandoned";
 }

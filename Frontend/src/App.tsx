@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  abandonGame,
   answerQuestion,
   createGame,
   createRemoteGame,
@@ -74,6 +75,9 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Aviso informativo exibido na home (ex: "Fulano encerrou a partida").
+  const [notice, setNotice] = useState<string | null>(null);
+
   // Identidade deste aparelho no modo remoto (null = modo local).
   const [myPlayerId, setMyPlayerId] = useState<string | null>(null);
   const [joinCode, setJoinCode] = useState<string | null>(null);
@@ -106,6 +110,13 @@ export default function App() {
     setError(null);
     try {
       const state = await getGame(saved.gameId);
+
+      // Partida encerrada por alguém: a sessão salva não vale mais.
+      if (state.status === "Abandoned") {
+        clearSession();
+        setPhase("home");
+        return;
+      }
 
       setGameId(saved.gameId);
       setGameState(state);
@@ -164,6 +175,16 @@ export default function App() {
     setPhase("question");
   }
 
+  // O outro jogador encerrou a partida: limpa tudo e avisa na home.
+  function handleGameAbandoned(payload: { state: GameState; abandonedByName: string | null }) {
+    abandonSession();
+    setNotice(
+      payload.abandonedByName
+        ? `${payload.abandonedByName} encerrou a partida.`
+        : "A partida foi encerrada."
+    );
+  }
+
   async function handleReconnected() {
     // Reconectou após queda: ressincroniza o estado pela API.
     const id = gameIdRef.current;
@@ -193,6 +214,7 @@ export default function App() {
     onAnswerSubmitted: handleAnswerSubmitted,
     onRoundAdvanced: handleRoundAdvanced,
     onGameRestarted: handleGameRestarted,
+    onGameAbandoned: handleGameAbandoned,
     onReconnected: handleReconnected
   };
 
@@ -367,6 +389,25 @@ export default function App() {
     setPhase("home");
   }
 
+  // Encerra a partida no backend (para os dois aparelhos) e limpa o estado local.
+  async function handleAbandonGame() {
+    const saved = loadSession();
+    const id = gameId ?? saved?.gameId;
+    const player = myPlayerId ?? saved?.playerId ?? undefined;
+
+    setLoading(true);
+    try {
+      if (id) {
+        await abandonGame(id, player);
+      }
+    } catch {
+      // Mesmo se a API falhar (sala já apagada etc.), sai localmente.
+    } finally {
+      setLoading(false);
+      abandonSession();
+    }
+  }
+
   // Sessão salva ainda válida para oferecer "voltar à partida" na home.
   const savedForResume = phase === "home" ? loadSession() : null;
 
@@ -388,25 +429,30 @@ export default function App() {
 
       {phase === "home" && (
         <HomeScreen
+          notice={notice}
           onLocal={() => {
             setError(null);
+            setNotice(null);
             setPhase("setup");
           }}
           onRemoteCreate={() => {
             setError(null);
+            setNotice(null);
             setPhase("remote-create");
           }}
           onRemoteJoin={() => {
             setError(null);
+            setNotice(null);
             setPhase("remote-join");
           }}
           resumeAvailable={savedForResume !== null}
           resumeJoinCode={savedForResume?.joinCode ?? null}
           onResume={() => {
+            setNotice(null);
             const saved = loadSession();
             if (saved) void resumeSession(saved);
           }}
-          onAbandon={abandonSession}
+          onAbandon={() => void handleAbandonGame()}
           loading={loading}
         />
       )}
@@ -420,6 +466,7 @@ export default function App() {
           joinCode={joinCode}
           onCreate={handleCreateRemote}
           onBack={backToHome}
+          onCancelRoom={() => void handleAbandonGame()}
           loading={loading}
           error={error}
         />
@@ -443,6 +490,8 @@ export default function App() {
             interactive={isMyTurn}
             onSelect={setSelectedOptionIndex}
             onConfirm={handleConfirmAnswer}
+            onRestart={handleRestart}
+            onAbandon={() => void handleAbandonGame()}
           />
           {error && <div className="error-note">{error}</div>}
         </>
