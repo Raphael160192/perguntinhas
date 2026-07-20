@@ -98,6 +98,29 @@ public class GameServiceRoundFlowTests
         Assert.Null(state.PendingRoundResult.RewardDetails);
     }
 
+    [Theory]
+    [InlineData(GameStatus.InProgress, GameStatus.Abandoned)]
+    [InlineData(GameStatus.Finished, GameStatus.Finished)]
+    public async Task AbandonAsync_IdentifiesPlayerWhoLeft_DuringOrAfterGame(
+        GameStatus initialStatus,
+        GameStatus expectedStatus)
+    {
+        var session = CreateSession();
+        session.Status = initialStatus;
+        var leavingPlayer = session.Players[1];
+        var service = CreateService(
+            new InMemorySessionRepository(session),
+            new CountingRewardSelector(),
+            new CountingActivityLog());
+
+        var result = await service.AbandonAsync(session.Id, leavingPlayer.Id);
+
+        Assert.NotNull(result);
+        Assert.Equal(leavingPlayer.Id, result.AbandonedByPlayerId);
+        Assert.Equal(leavingPlayer.Name, result.AbandonedByName);
+        Assert.Equal(expectedStatus.ToString(), result.State.Status);
+    }
+
     private static GameService CreateService(
         IGameSessionRepository sessionRepository,
         IRewardSelector rewardSelector,

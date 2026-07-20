@@ -3,7 +3,7 @@ export interface HomeScreenProps {
   onRemoteCreate: () => void;
   onRemoteJoin: () => void;
 
-  // Aviso informativo (ex: "Fulano encerrou a partida").
+  // Aviso informativo (ex: "Fulano saiu da partida").
   notice?: string | null;
 
   // Sessão salva no aparelho: oferece voltar à partida em andamento.

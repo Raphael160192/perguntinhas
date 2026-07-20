@@ -16,5 +16,11 @@ public class GamePlayerEntityConfiguration : IEntityTypeConfiguration<GamePlayer
         builder.Property(p => p.ClothingLostAtScoresJson).HasColumnType("jsonb").IsRequired();
 
         builder.HasIndex(p => new { p.GameSessionId, p.PlayerIndex }).IsUnique();
+
+        // FK opcional para users (D8: exclusão anula o vínculo, mantém o jogador).
+        builder.HasOne<UserEntity>()
+            .WithMany()
+            .HasForeignKey(p => p.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

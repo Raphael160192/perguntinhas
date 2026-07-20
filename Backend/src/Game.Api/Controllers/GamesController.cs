@@ -182,10 +182,11 @@ public class GamesController : ControllerBase
                 return NotFound();
             }
 
-            // Avisa o outro aparelho que a partida foi encerrada.
+            // Avisa o outro aparelho que um jogador saiu, inclusive após o fim do jogo.
             await BroadcastAsync(gameId, "GameAbandoned", new
             {
                 state = result.State,
+                abandonedByPlayerId = result.AbandonedByPlayerId,
                 abandonedByName = result.AbandonedByName
             });
 

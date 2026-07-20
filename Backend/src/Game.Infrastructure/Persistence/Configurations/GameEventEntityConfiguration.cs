@@ -24,5 +24,11 @@ public class GameEventEntityConfiguration : IEntityTypeConfiguration<GameEventEn
             .WithMany()
             .HasForeignKey(e => e.GameSessionId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // FK opcional para users (D8: exclusão anula o vínculo, mantém o evento).
+        builder.HasOne<UserEntity>()
+            .WithMany()
+            .HasForeignKey(e => e.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

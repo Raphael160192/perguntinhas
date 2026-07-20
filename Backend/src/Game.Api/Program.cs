@@ -1,12 +1,18 @@
+using System.Text;
+using Game.Api.Auth;
 using Game.Api.Hubs;
+using Game.Application.Auth;
 using Game.Application.Repositories;
 using Game.Application.Rewards;
 using Game.Application.Services;
+using Game.Infrastructure.Auth;
 using Game.Infrastructure.Persistence;
 using Game.Infrastructure.Persistence.Seed;
 using Game.Infrastructure.Repositories;
 using Game.Infrastructure.Rewards;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using Serilog;
 using Serilog.Formatting.Compact;
@@ -67,6 +73,37 @@ builder.Services.AddSingleton<IRewardSelector>(serviceProvider =>
         : serviceProvider.GetRequiredService<LegacyRewardSelector>();
 });
 builder.Services.AddScoped<IGameService, GameService>();
+
+// Fatia-base de identidade (F0). A SigningKey vem de variável de ambiente
+// (Jwt__SigningKey); Issuer/Audience/lifetime do appsettings.
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
+var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        // Mantém o claim 'sub' cru (sem mapear para NameIdentifier).
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtOptions.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwtOptions.Audience,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(string.IsNullOrEmpty(jwtOptions.SigningKey)
+                    ? new string('0', 32) // placeholder inócuo: sem token emitido, nada valida em F0
+                    : jwtOptions.SigningKey))
+        };
+    });
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, HttpContextCurrentUser>();
+builder.Services.AddSingleton<IJwtIssuer, JwtIssuer>();
+builder.Services.AddScoped<IUserRepository, PostgresUserRepository>();
+builder.Services.AddScoped<IUserConsentLog, PostgresUserConsentLog>();
 
 var app = builder.Build();
 
@@ -138,6 +175,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
@@ -159,15 +197,12 @@ static bool IsAllowedFrontendOrigin(string origin, ISet<string> configuredOrigin
         return false;
     }
 
-    if (uri.Scheme == Uri.UriSchemeHttp &&
+    // Apenas localhost em dev é liberado além dos origins configurados. Domínios de
+    // produção (incl. o da Vercel) devem estar em Cors:AllowedOrigins — com JWT via
+    // credenciais, o curinga *.vercel.app anterior era uma vulnerabilidade (task #18).
+    return uri.Scheme == Uri.UriSchemeHttp &&
         (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
-         uri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)))
-    {
-        return true;
-    }
-
-    return uri.Scheme == Uri.UriSchemeHttps &&
-        uri.Host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase);
+         uri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase));
 }
 
 static string ToNpgsqlConnectionString(string? connectionString)

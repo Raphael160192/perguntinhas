@@ -346,6 +346,7 @@ public class GameService : IGameService
         {
             return new AbandonGameResultDto
             {
+                AbandonedByPlayerId = abandonedBy?.Id,
                 AbandonedByName = abandonedBy?.Name,
                 State = await ToStateDtoAsync(session)
             };
@@ -365,6 +366,7 @@ public class GameService : IGameService
 
         return new AbandonGameResultDto
         {
+            AbandonedByPlayerId = abandonedBy?.Id,
             AbandonedByName = abandonedBy?.Name,
             State = await ToStateDtoAsync(session)
         };

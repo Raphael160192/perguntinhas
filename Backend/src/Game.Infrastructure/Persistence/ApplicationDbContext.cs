@@ -16,6 +16,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<GameAnswerEntity> GameAnswers => Set<GameAnswerEntity>();
     public DbSet<RewardEntity> Rewards => Set<RewardEntity>();
     public DbSet<GameEventEntity> GameEvents => Set<GameEventEntity>();
+    public DbSet<UserEntity> Users => Set<UserEntity>();
+    public DbSet<UserConsentEntity> UserConsents => Set<UserConsentEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

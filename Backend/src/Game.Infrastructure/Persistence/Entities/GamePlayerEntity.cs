@@ -8,6 +8,9 @@ public class GamePlayerEntity
     // Posição do jogador na partida (0 = jogador 1, 1 = jogador 2).
     public int PlayerIndex { get; set; }
 
+    // Identidade opcional do jogador (D4). Nulo quando anônimo; gravado pela US8.
+    public Guid? UserId { get; set; }
+
     public string Name { get; set; } = string.Empty;
     public int Score { get; set; }
     public bool Socks { get; set; }

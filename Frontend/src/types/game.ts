@@ -81,6 +81,7 @@ export interface JoinGameResult {
 }
 
 export interface AbandonGameResult {
+  abandonedByPlayerId: string | null;
   abandonedByName: string | null;
   state: GameState;
 }

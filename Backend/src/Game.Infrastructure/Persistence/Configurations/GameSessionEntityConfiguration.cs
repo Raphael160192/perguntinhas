@@ -19,6 +19,17 @@ public class GameSessionEntityConfiguration : IEntityTypeConfiguration<GameSessi
         builder.Property(s => s.Status).HasMaxLength(20).IsRequired();
         builder.Property(s => s.Mode).HasMaxLength(20).IsRequired();
         builder.Property(s => s.JoinCode).HasMaxLength(8);
+        builder.Property(s => s.AccessChannel)
+            .HasMaxLength(20)
+            .HasDefaultValue("anonymous")
+            .IsRequired();
+
+        // FK opcional para users: a exclusão de conta (D8) anula o UserId sem
+        // apagar a partida — os dados de jogo permanecem anonimizados.
+        builder.HasOne<UserEntity>()
+            .WithMany()
+            .HasForeignKey(s => s.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
         builder.Property(s => s.QuestionOrderJson).HasColumnType("jsonb").IsRequired();
         builder.Property(s => s.RoundNumber).HasDefaultValue(1).IsRequired();
         builder.Property(s => s.RewardProgressionJson)

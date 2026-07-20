@@ -67,3 +67,14 @@ postgres_data/
 *~
 .DS_Store
 Thumbs.db
+
+# ================================
+# Ferramentas de assistente de IA (não são código do projeto)
+# ================================
+.claude/
+.agents/
+
+# ================================
+# Artefatos de design (mockups/imagens — não são código nem dependência de execução)
+# ================================
+docs/design/

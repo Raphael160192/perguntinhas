@@ -87,6 +87,8 @@ export default function App() {
   // Refs para os handlers do hub lerem valores atuais sem re-registrar a conexão.
   const gameIdRef = useRef<string | null>(null);
   gameIdRef.current = gameId;
+  const myPlayerIdRef = useRef<string | null>(null);
+  myPlayerIdRef.current = myPlayerId;
 
   useEffect(() => {
     return () => {
@@ -175,13 +177,23 @@ export default function App() {
     setPhase("question");
   }
 
-  // O outro jogador encerrou a partida: limpa tudo e avisa na home.
-  function handleGameAbandoned(payload: { state: GameState; abandonedByName: string | null }) {
+  // O outro jogador saiu: limpa tudo e avisa na home, durante ou após a partida.
+  function handleGameAbandoned(payload: {
+    state: GameState;
+    abandonedByPlayerId: string | null;
+    abandonedByName: string | null;
+  }) {
+    // O broadcast também chega a quem fez a chamada; esse aparelho já está saindo.
+    if (
+      payload.abandonedByPlayerId &&
+      payload.abandonedByPlayerId === myPlayerIdRef.current
+    ) return;
+
     abandonSession();
     setNotice(
       payload.abandonedByName
-        ? `${payload.abandonedByName} encerrou a partida.`
-        : "A partida foi encerrada."
+        ? `${payload.abandonedByName} saiu da partida.`
+        : "O outro jogador saiu da partida."
     );
   }
 
@@ -522,7 +534,7 @@ export default function App() {
         <GameOverScreen
           state={gameState}
           onRestart={handleRestart}
-          onExit={abandonSession}
+          onExit={() => void handleAbandonGame()}
           loading={loading}
         />
       )}

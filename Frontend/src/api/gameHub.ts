@@ -15,7 +15,11 @@ export interface GameHubHandlers {
   onAnswerSubmitted?: (result: AnswerResult) => void;
   onRoundAdvanced?: (state: GameState) => void;
   onGameRestarted?: (state: GameState) => void;
-  onGameAbandoned?: (payload: { state: GameState; abandonedByName: string | null }) => void;
+  onGameAbandoned?: (payload: {
+    state: GameState;
+    abandonedByPlayerId: string | null;
+    abandonedByName: string | null;
+  }) => void;
   onReconnected?: () => void;
 }
 
@@ -34,8 +38,14 @@ export async function connectToGame(gameId: string, handlers: GameHubHandlers): 
   connection.on("AnswerSubmitted", (result: AnswerResult) => handlers.onAnswerSubmitted?.(result));
   connection.on("RoundAdvanced", (state: GameState) => handlers.onRoundAdvanced?.(state));
   connection.on("GameRestarted", (state: GameState) => handlers.onGameRestarted?.(state));
-  connection.on("GameAbandoned", (payload: { state: GameState; abandonedByName: string | null }) =>
-    handlers.onGameAbandoned?.(payload));
+  connection.on(
+    "GameAbandoned",
+    (payload: {
+      state: GameState;
+      abandonedByPlayerId: string | null;
+      abandonedByName: string | null;
+    }) => handlers.onGameAbandoned?.(payload)
+  );
 
   // Ao reconectar, reentra no grupo e avisa o App para ressincronizar o estado.
   connection.onreconnected(async () => {

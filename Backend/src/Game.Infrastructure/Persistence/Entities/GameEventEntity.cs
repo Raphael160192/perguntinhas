@@ -10,6 +10,10 @@ public class GameEventEntity
     // Jogador que causou o evento, quando aplicável.
     public Guid? PlayerId { get; set; }
 
+    // Identidade opcional (D4): preenchida pela US8 quando houver usuário logado,
+    // para o épico de Analytics filtrar por canal sem nunca somar as trilhas.
+    public Guid? UserId { get; set; }
+
     public string EventType { get; set; } = string.Empty;
     public string PayloadJson { get; set; } = "{}";
     public DateTime CreatedAt { get; set; }
