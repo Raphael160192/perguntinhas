@@ -1,3 +1,5 @@
+import type { AuthUser } from "../api/auth";
+
 export interface HomeScreenProps {
   onLocal: () => void;
   onRemoteCreate: () => void;
@@ -12,6 +14,11 @@ export interface HomeScreenProps {
   onResume: () => void;
   onAbandon: () => void;
   loading: boolean;
+
+  // Conta do jogador (US6 — opcional: jogar anônimo continua possível).
+  authUser?: AuthUser | null;
+  onGoogleLogin?: () => void;
+  onLogout?: () => void;
 }
 
 export function HomeScreen({
@@ -23,7 +30,10 @@ export function HomeScreen({
   resumeJoinCode,
   onResume,
   onAbandon,
-  loading
+  loading,
+  authUser = null,
+  onGoogleLogin,
+  onLogout
 }: HomeScreenProps) {
   return (
     <div className="screen screen--question">
@@ -68,6 +78,25 @@ export function HomeScreen({
           <button className="btn btn--ghost" onClick={onRemoteJoin} disabled={loading}>
             Entrar numa sala
           </button>
+
+          {authUser ? (
+            <div className="resume-banner">
+              <div className="resume-banner__text">Logado como {authUser.email}</div>
+              {onLogout && (
+                <div className="resume-banner__actions">
+                  <button className="btn btn--ghost" onClick={onLogout} disabled={loading}>
+                    Sair
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            onGoogleLogin && (
+              <button className="btn btn--ghost" onClick={onGoogleLogin} disabled={loading}>
+                Entrar com Google
+              </button>
+            )
+          )}
         </div>
       </div>
     </div>
