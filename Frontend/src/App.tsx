@@ -10,6 +10,7 @@ import {
   restartGame
 } from "./api/gameApi";
 import { connectToGame, disconnectFromGame } from "./api/gameHub";
+import { getAuthUser, loginWithGoogle, logout, type AuthUser } from "./api/auth";
 import { clearSession, loadSession, saveSession, type SavedSession } from "./api/session";
 import { HomeScreen } from "./components/HomeScreen";
 import { PlayerSetup } from "./components/PlayerSetup";
@@ -77,6 +78,25 @@ export default function App() {
 
   // Aviso informativo exibido na home (ex: "Fulano encerrou a partida").
   const [notice, setNotice] = useState<string | null>(null);
+
+  // Conta do jogador (US6). Login é opcional — anônimo joga normalmente.
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() => getAuthUser());
+
+  async function handleGoogleLogin() {
+    // Falhas aparecem no banner de aviso da home (a home não renderiza `error`).
+    setNotice(null);
+    try {
+      const user = await loginWithGoogle();
+      setAuthUser(user);
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : "Não foi possível entrar com o Google.");
+    }
+  }
+
+  function handleLogout() {
+    logout();
+    setAuthUser(null);
+  }
 
   // Identidade deste aparelho no modo remoto (null = modo local).
   const [myPlayerId, setMyPlayerId] = useState<string | null>(null);
@@ -466,6 +486,9 @@ export default function App() {
           }}
           onAbandon={() => void handleAbandonGame()}
           loading={loading}
+          authUser={authUser}
+          onGoogleLogin={() => void handleGoogleLogin()}
+          onLogout={handleLogout}
         />
       )}
 

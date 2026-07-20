@@ -105,6 +105,11 @@ builder.Services.AddSingleton<IJwtIssuer, JwtIssuer>();
 builder.Services.AddScoped<IUserRepository, PostgresUserRepository>();
 builder.Services.AddScoped<IUserConsentLog, PostgresUserConsentLog>();
 
+// Login com Google (US6): valida o ID token e emite o JWT próprio.
+builder.Services.Configure<GoogleAuthOptions>(builder.Configuration.GetSection(GoogleAuthOptions.SectionName));
+builder.Services.AddSingleton<IGoogleTokenValidator, GoogleTokenValidator>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+
 var app = builder.Build();
 
 // Quando a seleção inteligente está ativa, carrega e valida o catálogo no
